@@ -399,14 +399,6 @@
       "email": "victor.cardenas@example.com",
       "phoneNumber": "+54 11 5555 1049",
       "jobId": 10
-    },
-    {
-      "id": 51,
-      "firstName": "Janet",
-      "lastName": "Doe",
-      "email": "janet.doe@gmail.com",
-      "phoneNumber": "",
-      "jobId": 1
     }
   ],
   "jobs": [

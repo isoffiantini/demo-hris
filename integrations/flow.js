@@ -23,12 +23,22 @@ function toEmployeePayload(payload) {
   };
 }
 
-function createEmployee(employee) {
+function upsertEmployee(employee) {
   const data = readData();
+  const email = (employee.email || "").toLowerCase();
+  const existing = data.employees.find((e) => (e.email || "").toLowerCase() === email);
+
+  if (existing) {
+    const updated = { ...existing, ...employee, id: existing.id };
+    data.employees = data.employees.map((e) => (e.id === existing.id ? updated : e));
+    writeData(data);
+    return { record: updated, created: false };
+  }
+
   const record = { id: nextId(data.employees), ...employee };
   data.employees.push(record);
   writeData(data);
-  return record;
+  return { record, created: true };
 }
 
 router.get("/flow_create_employee", (req, res) => {
@@ -38,7 +48,7 @@ router.get("/flow_create_employee", (req, res) => {
 
 router.post("/flow_create_employee", (req, res) => {
   const employee = toEmployeePayload(req.body);
-  createEmployee(employee);
+  upsertEmployee(employee);
   respondAsync(res);
 });
 
