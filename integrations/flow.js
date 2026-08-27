@@ -7,6 +7,8 @@ const router = express.Router();
 
 const RECORD_TYPE_EMPLOYEE = 2;
 
+const HRIS_BASE_URL = process.env.HRIS_BASE_URL || "https://demo-hris.onrender.com";
+
 function respondAsync(res) {
   res.json({ asyncResponse: { successful: true } });
 }
@@ -65,7 +67,17 @@ function upsertEmployee(employee, avaturePersonId) {
 }
 
 function employeeUrl(req, id) {
-  return `${req.protocol}://${req.get("host")}/#/people/${id}`;
+  return `${HRIS_BASE_URL}/#/people/${id}`;
+}
+
+function validateFlowInput(employee) {
+  const errors = [];
+  for (const field of ["firstName", "lastName", "email"]) {
+    if (!employee[field] || String(employee[field]).trim() === "") {
+      errors.push(`${field} is required`);
+    }
+  }
+  return errors;
 }
 
 function persistSyncFormId(recordId, formId) {
@@ -89,6 +101,18 @@ router.get("/flow_create_employee", (req, res) => {
 router.post("/flow_create_employee", async (req, res) => {
   try {
     const employee = toEmployeePayload(req.body);
+    const validationErrors = validateFlowInput(employee);
+    if (validationErrors.length) {
+      console.warn(`[flow_create_employee] Validation failed: ${validationErrors.join(", ")}`);
+      void sendErrorLog(req, {
+        recordTypeId: RECORD_TYPE_EMPLOYEE,
+        message: `Validation failed: ${validationErrors.join(", ")}`,
+      });
+      return res
+        .status(400)
+        .json({ asyncResponse: { successful: false, errors: validationErrors } });
+    }
+
     const requestPersonId = resolveRecordId(req);
     const { record, created } = upsertEmployee(employee, requestPersonId);
     const personId = record.avaturePersonId;
@@ -122,7 +146,7 @@ router.post("/flow_create_employee", async (req, res) => {
       }
 
       try {
-        const result = await attachForm(personId, record.id, utcDateTime());
+        const result = await attachForm(personId, record.id, utcDateTime(), employeeUrl(req, record.id));
         persistSyncFormId(record.id, result.formId);
         if (result.action === "skipped") {
           console.warn(`[hrisSync] Form sync skipped: ${result.reason}`);

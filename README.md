@@ -126,8 +126,18 @@ El `dateTime` se envía con formato `yyyy-MM-dd'T'HH:mm:ss.SSS+0000` (igual que 
 El body de POST y PATCH es:
 
 ```json
-{ "personId": <id de Avature>, "HRIS External ID": <id del registro en el HRIS>, "Last Synced": "yyyy-MM-dd'T'HH:mm:ss.SSS+0000" }
+{
+  "personId": <id de Avature>,
+  "HRIS External ID": <id del registro en el HRIS>,
+  "HRIS URL": "https://demo-hris.onrender.com/#/people/<id>",
+  "Sync Details": "Success",
+  "Last Synced": "yyyy-MM-dd'T'HH:mm:ss.SSS+0000"
+}
 ```
+
+`HRIS URL` usa la variable `HRIS_BASE_URL` (por defecto `https://demo-hris.onrender.com`). `Sync Details` es siempre `"Success"` cuando el sync se completa.
+
+**Validación:** si `firstName`, `lastName` o `email` faltan o vienen vacíos, NO se crea el empleado: responde `400` con `{ "asyncResponse": { "successful": false, "errors": [...] } }` y se registra un log `ERROR` en la ejecución (Junction Events).
 
 Las requests se autentican con el header `X-Avature-REST-API-Key`. **Variables de entorno (en Render → Environment, nunca en el código):**
 - `AVATURE_REST_API_KEY` — el valor de la API key (producción).
