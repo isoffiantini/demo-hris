@@ -1,7 +1,7 @@
 const express = require("express");
 const { readData, writeData, nextId } = require("../store");
 const { resolveTrackingCode, resolveRecordId, sendErrorLog, utcDateTime, resolveLogContext, makeLog, sendLogSafe } = require("./junction");
-const { attachForm } = require("./hrisSync");
+const { attachForm, patchFormAt, getEmployeeSyncForm, getAvatureRecordNames } = require("./hrisSync");
 
 const router = express.Router();
 
@@ -98,13 +98,80 @@ router.get("/webhook", (req, res) => {
   res.json({ "avature-challenge-code": challenge });
 });
 
-router.post("/webhook", (req, res) => {
+async function handleWebhookEvent(req, avatureId) {
+  const sync = await getEmployeeSyncForm(avatureId);
+  if (!sync.form) {
+    return { action: "not-synced", detail: "no hris_employee_sync form found" };
+  }
+  if (!sync.hrisExternalId) {
+    return { action: "skipped", detail: "form found but hris_external_id is missing" };
+  }
+  const names = await getAvatureRecordNames(avatureId);
+  if (!names.firstName || !names.lastName) {
+    return {
+      action: "skipped",
+      detail: `names missing in Avature (first="${names.firstName}" last="${names.lastName}")`,
+    };
+  }
+  const data = readData();
+  const employee = data.employees.find((e) => String(e.id) === String(sync.hrisExternalId));
+  if (!employee) {
+    return {
+      action: "not-synced",
+      detail: `hris_external_id=${sync.hrisExternalId} does not match any HRIS employee`,
+    };
+  }
+  if (employee.firstName === names.firstName && employee.lastName === names.lastName) {
+    return { action: "match", detail: `names unchanged (${names.firstName} ${names.lastName})` };
+  }
+  employee.firstName = names.firstName;
+  employee.lastName = names.lastName;
+  writeData(data);
+
+  if (sync.formId) {
+    await patchFormAt(avatureId, sync.formId, {
+      hrisExternalId: sync.hrisExternalId,
+      hrisUrl: employeeUrl(req, employee.id),
+      syncDetails: "Success",
+      lastSynced: utcDateTime(),
+    });
+  } else {
+    console.warn(`[webhook] record=${avatureId} no formId available; Last Synced not updated`);
+  }
+
+  return {
+    action: "updated",
+    detail: `names updated to ${names.firstName} ${names.lastName}`,
+  };
+}
+
+function formatWebhookResult(result) {
+  return `${result.action}${result.detail ? `: ${result.detail}` : ""}`;
+}
+
+router.post("/webhook", async (req, res) => {
   const payload = req.body || {};
   const tracking = resolveTrackingCode(req);
   const challenge = req.get("avature-challenge-code") || "";
+  const events = Array.isArray(payload.events) ? payload.events : [];
   console.log(
-    `[webhook] POST trackingCode="${tracking}" challenge="${challenge}" query=${JSON.stringify(req.query || {})} body=${JSON.stringify(payload)}`
+    `[webhook] POST totalCount=${payload.totalCount ?? events.length} events=${events.length} trackingCode="${tracking}" challenge="${challenge}"`
   );
+
+  for (const ev of events) {
+    const avatureId = ev.record && ev.record.id;
+    if (avatureId === undefined || avatureId === null) {
+      console.warn("[webhook] event without record.id; skipping");
+      continue;
+    }
+    try {
+      const result = await handleWebhookEvent(req, avatureId);
+      console.log(`[webhook] record=${avatureId} -> ${formatWebhookResult(result)}`);
+    } catch (err) {
+      console.error(`[webhook] record=${avatureId} -> failed: ${err.message}`);
+    }
+  }
+
   res.json({ success: true });
 });
 

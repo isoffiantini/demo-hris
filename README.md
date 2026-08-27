@@ -146,3 +146,16 @@ Las requests se autentican con el header `X-Avature-REST-API-Key`. **Variables d
 - `AVATURE_REST_BASE_URL` — base de la instancia (por defecto `https://junctiontraining.avature.net`).
 - `HRIS_SYNC_FORM_ID` — id del form (por defecto `838`).
 
+### Webhook de Avature (`/webhook`)
+
+Recibe eventos de webhooks de Avature (por ejemplo `record_2.fieldEdited`). Un `GET` responde el challenge de Avature (`avature-challenge-code`) igual que `flow_create_employee`.
+
+En cada `POST`, para cada evento se procesa su `record.id` (el id de Avature):
+
+1. `GET {base}/rest/avature/core/v1/data/records_2/{id}/forms_hris_employee_sync?use_canonical_names=1` — si no existe el form, el registro no está sincronizado con el HRIS y se omite (`not-synced`).
+2. Si el form existe, se lee `hris_external_id` → id del empleado en el HRIS.
+3. `GET {base}/rest/avature/core/v1/data/records_2/{id}?use_canonical_names=1` — se obtienen `firstName` y `lastName`.
+4. Si difieren de los del empleado en el HRIS, se actualizan sus `firstName`/`lastName`; si coinciden se registra `match` y no se modifica nada.
+
+El parseo es tolerante a formas de respuesta (`items`/`data`/array) y claves case-insensitive (`first_name`, `firstName`, `First Name`; `hris_external_id`, `hrisExternalId`, `HRIS External ID`). Usa las mismas variables de entorno (`AVATURE_REST_API_KEY`, `AVATURE_REST_BASE_URL`).
+
