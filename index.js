@@ -14,8 +14,72 @@ app.get("/health", (req, res) => {
 
 app.use(flowRouter);
 
+const EMPLOYMENT_STATUSES = ["Hired", "Ex Employee"];
+const JOB_STATUSES = ["open", "closed"];
+const EMPLOYMENT_TYPES = ["Remote", "On-site"];
+
 function validateEmployee(body, partial) {
   const required = ["firstName", "lastName", "email", "phoneNumber", "jobId"];
+  const errors = [];
+  for (const field of required) {
+    if (!partial && !(field in body)) {
+      errors.push(`${field} is required`);
+    } else if (body[field] !== undefined && (body[field] === "" || body[field] === null)) {
+      errors.push(`${field} cannot be empty`);
+    }
+  }
+  if (body.jobId !== undefined && !Number.isInteger(body.jobId)) {
+    errors.push("jobId must be a positive integer");
+  }
+  if (!partial && body.employmentStatus === undefined) {
+    errors.push("employmentStatus is required");
+  }
+  if (body.employmentStatus !== undefined && !EMPLOYMENT_STATUSES.includes(body.employmentStatus)) {
+    errors.push("employmentStatus must be 'Hired' or 'Ex Employee'");
+  }
+  if (!partial && body.hireDate === undefined) {
+    errors.push("hireDate is required");
+  }
+  if (body.hireDate !== undefined && Number.isNaN(Date.parse(body.hireDate))) {
+    errors.push("hireDate must be a valid date");
+  }
+  if (
+    body.department !== undefined &&
+    body.department !== null &&
+    String(body.department).trim() === ""
+  ) {
+    errors.push("department cannot be empty");
+  }
+  return errors;
+}
+
+function validateJob(body, partial) {
+  const required = ["name", "description", "departmentId", "status", "employmentType", "locationId"];
+  const errors = [];
+  for (const field of required) {
+    if (!partial && !(field in body)) {
+      errors.push(`${field} is required`);
+    } else if (body[field] !== undefined && (body[field] === "" || body[field] === null)) {
+      errors.push(`${field} cannot be empty`);
+    }
+  }
+  if (body.status !== undefined && !JOB_STATUSES.includes(body.status)) {
+    errors.push("status must be either 'open' or 'closed'");
+  }
+  if (body.employmentType !== undefined && !EMPLOYMENT_TYPES.includes(body.employmentType)) {
+    errors.push("employmentType must be either 'Remote' or 'On-site'");
+  }
+  if (body.departmentId !== undefined && !Number.isInteger(body.departmentId)) {
+    errors.push("departmentId must be a positive integer");
+  }
+  if (body.locationId !== undefined && !Number.isInteger(body.locationId)) {
+    errors.push("locationId must be a positive integer");
+  }
+  return errors;
+}
+
+function validateDepartment(body, partial) {
+  const required = ["name"];
   const errors = [];
   for (const field of required) {
     if (!partial && !(field in body)) {
@@ -27,8 +91,8 @@ function validateEmployee(body, partial) {
   return errors;
 }
 
-function validateJob(body, partial) {
-  const required = ["name", "description", "department", "status"];
+function validateLocation(body, partial) {
+  const required = ["country", "state"];
   const errors = [];
   for (const field of required) {
     if (!partial && !(field in body)) {
@@ -36,9 +100,6 @@ function validateJob(body, partial) {
     } else if (body[field] !== undefined && (body[field] === "" || body[field] === null)) {
       errors.push(`${field} cannot be empty`);
     }
-  }
-  if (body.status !== undefined && !["open", "closed"].includes(body.status)) {
-    errors.push("status must be either 'open' or 'closed'");
   }
   return errors;
 }
@@ -103,6 +164,25 @@ function paginateCursor(list, req) {
   };
 }
 
+function jobDepartment(job) {
+  const data = readData();
+  const dept = data.departments.find((d) => d.id === job.departmentId);
+  return dept ? dept.name : null;
+}
+
+function serializeJob(job) {
+  const data = readData();
+  const dept = data.departments.find((d) => d.id === job.departmentId) || null;
+  const loc = data.locations.find((l) => l.id === job.locationId) || null;
+  return {
+    ...job,
+    department: dept ? dept.name : null,
+    location: loc ? { country: loc.country, state: loc.state } : null,
+  };
+}
+
+// ---------- employees ----------
+
 app.get("/employees", (req, res) => {
   const { data } = getEntity("employees");
   let list = data.employees;
@@ -125,9 +205,17 @@ app.get("/employees/:id", (req, res) => {
 });
 
 app.post("/employees", (req, res) => {
-  if (handleErrors(validateEmployee(req.body), res)) return;
+  if (handleErrors(validateEmployee(req.body, false), res)) return;
   const data = readData();
-  const employee = { id: nextId(data.employees), ...req.body };
+  const job = data.jobs.find((j) => j.id === req.body.jobId);
+  if (!job) {
+    return res.status(400).json({ errors: ["jobId references a job that does not exist"] });
+  }
+  const department = jobDepartment(job);
+  if (req.body.department !== undefined && req.body.department !== department) {
+    return res.status(400).json({ errors: ["department must match the department of the assigned job"] });
+  }
+  const employee = { id: nextId(data.employees), ...req.body, department };
   data.employees.push(employee);
   writeData(data);
   res.status(201).json(employee);
@@ -139,7 +227,16 @@ app.patch("/employees/:id", (req, res) => {
   if (!entity) {
     return res.status(404).json({ error: "Employee not found" });
   }
-  const updated = applyPartial(entity, req.body);
+  const jobId = req.body.jobId !== undefined ? req.body.jobId : entity.jobId;
+  const job = data.jobs.find((j) => j.id === jobId);
+  if (!job) {
+    return res.status(400).json({ errors: ["jobId references a job that does not exist"] });
+  }
+  const department = jobDepartment(job);
+  if (req.body.department !== undefined && req.body.department !== department) {
+    return res.status(400).json({ errors: ["department must match the department of the assigned job"] });
+  }
+  const updated = { ...applyPartial(entity, req.body), department };
   data.employees = data.employees.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);
   res.json(updated);
@@ -155,9 +252,12 @@ app.delete("/employees/:id", (req, res) => {
   res.status(204).end();
 });
 
+// ---------- jobs ----------
+
 app.get("/jobs", (req, res) => {
   const { data } = getEntity("jobs");
-  res.json(paginateCursor(data.jobs, req));
+  const jobs = data.jobs.map(serializeJob);
+  res.json(paginateCursor(jobs, req));
 });
 
 app.get("/jobs/:id", (req, res) => {
@@ -165,16 +265,24 @@ app.get("/jobs/:id", (req, res) => {
   if (!entity) {
     return res.status(404).json({ error: "Job not found" });
   }
-  res.json(entity);
+  res.json(serializeJob(entity));
 });
 
 app.post("/jobs", (req, res) => {
-  if (handleErrors(validateJob(req.body), res)) return;
+  if (handleErrors(validateJob(req.body, false), res)) return;
   const data = readData();
+  const dept = data.departments.find((d) => d.id === req.body.departmentId);
+  if (!dept) {
+    return res.status(400).json({ errors: ["departmentId references a department that does not exist"] });
+  }
+  const loc = data.locations.find((l) => l.id === req.body.locationId);
+  if (!loc) {
+    return res.status(400).json({ errors: ["locationId references a location that does not exist"] });
+  }
   const job = { id: nextId(data.jobs), ...req.body };
   data.jobs.push(job);
   writeData(data);
-  res.status(201).json(job);
+  res.status(201).json(serializeJob(job));
 });
 
 app.patch("/jobs/:id", (req, res) => {
@@ -183,10 +291,18 @@ app.patch("/jobs/:id", (req, res) => {
   if (!entity) {
     return res.status(404).json({ error: "Job not found" });
   }
+  const departmentId = req.body.departmentId !== undefined ? req.body.departmentId : entity.departmentId;
+  if (!data.departments.find((d) => d.id === departmentId)) {
+    return res.status(400).json({ errors: ["departmentId references a department that does not exist"] });
+  }
+  const locationId = req.body.locationId !== undefined ? req.body.locationId : entity.locationId;
+  if (!data.locations.find((l) => l.id === locationId)) {
+    return res.status(400).json({ errors: ["locationId references a location that does not exist"] });
+  }
   const updated = applyPartial(entity, req.body);
   data.jobs = data.jobs.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);
-  res.json(updated);
+  res.json(serializeJob(updated));
 });
 
 app.delete("/jobs/:id", (req, res) => {
@@ -199,36 +315,105 @@ app.delete("/jobs/:id", (req, res) => {
   res.status(204).end();
 });
 
+// ---------- departments ----------
+
 app.get("/departments", (req, res) => {
-  const { data } = getEntity("jobs");
-  const names = [...new Set(data.jobs.map((j) => j.department).filter(Boolean))].sort(
-    (a, b) => a.localeCompare(b)
-  );
-  const departments = names.map((name, i) => ({ id: i + 1, name }));
+  const { data } = getEntity("departments");
+  res.json(paginateCursor(data.departments, req));
+});
 
-  const pageSizeRaw = Number(req.query.pageSize);
-  const pageSize = Number.isInteger(pageSizeRaw) && pageSizeRaw > 0
-    ? Math.min(pageSizeRaw, 100)
-    : 10;
-
-  let startIndex = 0;
-  if (req.query.cursor) {
-    const cursorId = decodeCursor(req.query.cursor);
-    if (cursorId !== null) {
-      startIndex = departments.findIndex((d) => d.id > cursorId);
-      if (startIndex === -1) startIndex = departments.length;
-    }
+app.get("/departments/:id", (req, res) => {
+  const { entity } = getEntity("departments", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Department not found" });
   }
+  res.json(entity);
+});
 
-  const page = departments.slice(startIndex, startIndex + pageSize);
-  const last = page[page.length - 1];
-  const hasMore = startIndex + page.length < departments.length;
+app.post("/departments", (req, res) => {
+  if (handleErrors(validateDepartment(req.body, false), res)) return;
+  const data = readData();
+  if (data.departments.some((d) => d.name.toLowerCase() === req.body.name.toLowerCase())) {
+    return res.status(400).json({ errors: ["A department with that name already exists"] });
+  }
+  const department = { id: nextId(data.departments), name: req.body.name, description: req.body.description || "" };
+  data.departments.push(department);
+  writeData(data);
+  res.status(201).json(department);
+});
 
-  res.json({
-    data: page,
-    pageSize,
-    next: hasMore ? { cursor: encodeCursor(last.id) } : null,
-  });
+app.patch("/departments/:id", (req, res) => {
+  if (handleErrors(validateDepartment(req.body, true), res)) return;
+  const { data, entity } = getEntity("departments", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Department not found" });
+  }
+  const updated = applyPartial(entity, req.body);
+  data.departments = data.departments.map((item) => (item.id === updated.id ? updated : item));
+  writeData(data);
+  res.json(updated);
+});
+
+app.delete("/departments/:id", (req, res) => {
+  const { data, entity } = getEntity("departments", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Department not found" });
+  }
+  if (data.jobs.some((j) => j.departmentId === entity.id)) {
+    return res.status(400).json({ errors: ["Department is assigned to one or more jobs and cannot be deleted"] });
+  }
+  data.departments = data.departments.filter((item) => item.id !== entity.id);
+  writeData(data);
+  res.status(204).end();
+});
+
+// ---------- locations ----------
+
+app.get("/locations", (req, res) => {
+  const { data } = getEntity("locations");
+  res.json(paginateCursor(data.locations, req));
+});
+
+app.get("/locations/:id", (req, res) => {
+  const { entity } = getEntity("locations", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Location not found" });
+  }
+  res.json(entity);
+});
+
+app.post("/locations", (req, res) => {
+  if (handleErrors(validateLocation(req.body, false), res)) return;
+  const data = readData();
+  const location = { id: nextId(data.locations), ...req.body };
+  data.locations.push(location);
+  writeData(data);
+  res.status(201).json(location);
+});
+
+app.patch("/locations/:id", (req, res) => {
+  if (handleErrors(validateLocation(req.body, true), res)) return;
+  const { data, entity } = getEntity("locations", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Location not found" });
+  }
+  const updated = applyPartial(entity, req.body);
+  data.locations = data.locations.map((item) => (item.id === updated.id ? updated : item));
+  writeData(data);
+  res.json(updated);
+});
+
+app.delete("/locations/:id", (req, res) => {
+  const { data, entity } = getEntity("locations", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Location not found" });
+  }
+  if (data.jobs.some((j) => j.locationId === entity.id)) {
+    return res.status(400).json({ errors: ["Location is assigned to one or more jobs and cannot be deleted"] });
+  }
+  data.locations = data.locations.filter((item) => item.id !== entity.id);
+  writeData(data);
+  res.status(204).end();
 });
 
 app.use(express.static(path.join(__dirname, "public")));

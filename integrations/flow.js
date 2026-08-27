@@ -20,22 +20,32 @@ function toEmployeePayload(payload) {
     email: props.email || "",
     phoneNumber: normalizeNull(props.phone),
     jobId: Number(props.job_hris_id),
+    employmentStatus: props.employmentStatus === "Ex Employee" ? "Ex Employee" : "Hired",
+    hireDate: props.hireDate || new Date().toISOString().slice(0, 10),
   };
 }
 
+function departmentForJob(data, jobId) {
+  const job = data.jobs.find((j) => j.id === Number(jobId));
+  if (!job) return "";
+  const dept = data.departments.find((d) => d.id === job.departmentId);
+  return dept ? dept.name : "";
+}
+
 function upsertEmployee(employee) {
-  const data = readData();
+  let data = readData();
   const email = (employee.email || "").toLowerCase();
   const existing = data.employees.find((e) => (e.email || "").toLowerCase() === email);
+  const department = departmentForJob(data, employee.jobId);
 
   if (existing) {
-    const updated = { ...existing, ...employee, id: existing.id };
+    const updated = { ...existing, ...employee, department, id: existing.id };
     data.employees = data.employees.map((e) => (e.id === existing.id ? updated : e));
     writeData(data);
     return { record: updated, created: false };
   }
 
-  const record = { id: nextId(data.employees), ...employee };
+  const record = { id: nextId(data.employees), ...employee, department };
   data.employees.push(record);
   writeData(data);
   return { record, created: true };

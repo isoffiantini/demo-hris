@@ -102,6 +102,10 @@
     }
     .badge.open { background: #d3f1e0; color: #11653c; }
     .badge.closed { background: #fae3e0; color: #99201a; }
+    .badge.hired { background: #d3f1e0; color: #11653c; }
+    .badge.ex-employee { background: #e9e7fb; color: #3e3c8c; }
+    .inline-form { flex-direction: row; align-items: center; max-width: none; }
+    .inline-form input { width: 200px; }
     .detail-row { display: flex; padding: 10px 0; border-bottom: 1px solid #e4e7eb; font-size: 14px; }
     .detail-row .k { width: 160px; color: #52606d; font-weight: 600; }
     .detail-row .v { color: #1f2933; }
@@ -177,6 +181,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01M9 12h.01M9 15h.01M15 9h.01M15 12h.01M15 15h.01"/></svg>
           Departments
         </a>
+        <a href="#/locations" data-nav="locations">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Locations
+        </a>
       </nav>
     </aside>
 
@@ -190,11 +198,12 @@
   <script>
     const PAGE_SIZE = 10;
     const CURRENT_USER = "Ignacio";
-    const state = { employees: [], jobs: [], departments: [] };
+    const state = { employees: [], jobs: [], departments: [], locations: [] };
     const pages = {
       employees: { list: [], pageCursor: null, next: null, prevStack: [], jobFilter: null },
       jobs: { list: [], pageCursor: null, next: null, prevStack: [] },
       departments: { list: [], pageCursor: null, next: null, prevStack: [] },
+      locations: { list: [], pageCursor: null, next: null, prevStack: [] },
     };
     let toastTimer = null;
 
@@ -236,6 +245,15 @@
 
     function statusBadge(status) {
       return `<span class="badge ${status}">${status}</span>`;
+    }
+
+    function employmentStatusBadge(status) {
+      const cls = status === "Ex Employee" ? "ex-employee" : "hired";
+      return `<span class="badge ${cls}">${esc(status)}</span>`;
+    }
+
+    function locationText(j) {
+      return j && j.location ? `${j.location.country}, ${j.location.state}` : "—";
     }
 
     function esc(str) {
@@ -360,15 +378,41 @@
           <div class="card-header">
             <h2>Departments</h2>
           </div>
+          <div class="filter-bar">
+            <form onsubmit="createDepartment(event)" class="inline-form">
+              <input id="dept-name" placeholder="Name" required />
+              <input id="dept-desc" placeholder="Description" />
+              <button class="primary" type="submit">Add department</button>
+            </form>
+          </div>
           ${departmentTable(pages.departments.list)}
           ${paginationControls("departments")}
+        </div>`;
+    }
+
+    function locationsListView() {
+      return `
+        ${pageTitle("Locations", "Browse your locations")}
+        <div class="card">
+          <div class="card-header">
+            <h2>Locations</h2>
+          </div>
+          <div class="filter-bar">
+            <form onsubmit="createLocation(event)" class="inline-form">
+              <input id="loc-country" placeholder="Country" required />
+              <input id="loc-state" placeholder="State" required />
+              <button class="primary" type="submit">Add location</button>
+            </form>
+          </div>
+          ${locationTable(pages.locations.list)}
+          ${paginationControls("locations")}
         </div>`;
     }
 
     function employeeTable(list) {
       if (!list.length) return '<div class="empty">No people yet.</div>';
       return `<table>
-        <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th></tr></thead>
+        <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th><th>Status</th></tr></thead>
         <tbody>
           ${list.map((e) => `<tr class="clickable" data-href="#/people/${e.id}">
             <td>${esc(e.firstName)}</td>
@@ -376,6 +420,7 @@
             <td>${esc(e.email)}</td>
             <td>${esc(e.phoneNumber)}</td>
             <td>${jobName(e.jobId)}</td>
+            <td>${employmentStatusBadge(e.employmentStatus)}</td>
           </tr>`).join("")}
         </tbody>
       </table>`;
@@ -384,11 +429,13 @@
     function jobTable(list) {
       if (!list.length) return '<div class="empty">No jobs yet.</div>';
       return `<table>
-        <thead><tr><th>Name</th><th>Department</th><th>Status</th></tr></thead>
+        <thead><tr><th>Name</th><th>Department</th><th>Type</th><th>Location</th><th>Status</th></tr></thead>
         <tbody>
           ${list.map((j) => `<tr class="clickable" data-href="#/jobs/${j.id}">
             <td>${esc(j.name)}</td>
             <td>${esc(j.department)}</td>
+            <td>${esc(j.employmentType)}</td>
+            <td>${locationText(j)}</td>
             <td>${statusBadge(j.status)}</td>
           </tr>`).join("")}
         </tbody>
@@ -398,9 +445,19 @@
     function departmentTable(list) {
       if (!list.length) return '<div class="empty">No departments yet.</div>';
       return `<table>
-        <thead><tr><th>Name</th></tr></thead>
+        <thead><tr><th>Name</th><th>Description</th></tr></thead>
         <tbody>
-          ${list.map((d) => `<tr><td>${esc(d.name)}</td></tr>`).join("")}
+          ${list.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.description)}</td></tr>`).join("")}
+        </tbody>
+      </table>`;
+    }
+
+    function locationTable(list) {
+      if (!list.length) return '<div class="empty">No locations yet.</div>';
+      return `<table>
+        <thead><tr><th>Country</th><th>State</th></tr></thead>
+        <tbody>
+          ${list.map((l) => `<tr><td>${esc(l.country)}</td><td>${esc(l.state)}</td></tr>`).join("")}
         </tbody>
       </table>`;
     }
@@ -430,9 +487,17 @@
             ${field("lastName", "Last name", null)}
             ${field("email", "Email", null, "email")}
             ${field("phoneNumber", "Phone number", null)}
+            <label>Employment status
+              <select name="employmentStatus" required>
+                <option value="Hired">Hired</option>
+                <option value="Ex Employee">Ex Employee</option>
+              </select>
+            </label>
+            <label>Hire date <input name="hireDate" type="date" required /></label>
             <label>Job (related)
               <select name="jobId" id="job-select" required></select>
             </label>
+            <div class="subtitle" id="dept-hint"></div>
             <div class="form-actions">
               <button class="primary" type="submit">Create person</button>
               <a class="btn" href="#/people" style="border:1px solid #cbd2d9">Cancel</a>
@@ -454,6 +519,15 @@
             ${field("description", "Description", null)}
             <label>Department
               <select name="department" id="department-select" required></select>
+            </label>
+            <label>Employment type
+              <select name="employmentType" required>
+                <option value="Remote">Remote</option>
+                <option value="On-site">On-site</option>
+              </select>
+            </label>
+            <label>Location
+              <select name="location" id="location-select" required></select>
             </label>
             <label>Status
               <select name="status" required>
@@ -486,6 +560,7 @@
       { pattern: /^#\/jobs\/(\d+)\/edit$/, view: (m) => jobFormView(m[1]) },
       { pattern: /^#\/jobs\/(\d+)$/, view: (m) => jobDetailView(m[1]) },
       { pattern: /^#\/departments$/, view: departmentsListView },
+      { pattern: /^#\/locations$/, view: locationsListView },
     ];
 
     function activeNav(hash) {
@@ -493,6 +568,7 @@
       if (hash.startsWith("#/people")) return "people";
       if (hash.startsWith("#/jobs")) return "jobs";
       if (hash.startsWith("#/departments")) return "departments";
+      if (hash.startsWith("#/locations")) return "locations";
       return "";
     }
 
@@ -538,14 +614,27 @@
         if (Number(selectedId) === j.id) opt.selected = true;
         select.appendChild(opt);
       });
+      const hint = document.getElementById("dept-hint");
+      if (hint) {
+        select.addEventListener("change", updateDeptHint);
+        updateDeptHint();
+      }
     }
 
-    async function populateDepartmentSelect(selected) {
+    function updateDeptHint() {
+      const select = document.getElementById("job-select");
+      const hint = document.getElementById("dept-hint");
+      if (!select || !hint) return;
+      const j = state.jobs.find((jb) => jb.id === Number(select.value));
+      hint.textContent = j ? `Department: ${j.department || "—"}` : "Department: —";
+    }
+
+    async function populateDepartmentSelect(selectedId) {
       let departments = state.departments;
       if (!departments || !departments.length) {
         const { data } = await api("/departments?pageSize=100");
         const list = data && Array.isArray(data.data) ? data.data : [];
-        state.departments = list.map((d) => d.name);
+        state.departments = list;
         departments = state.departments;
       }
       const select = document.getElementById("department-select");
@@ -555,11 +644,35 @@
         select.innerHTML = '<option value="" disabled>No departments available</option>';
         return;
       }
-      departments.forEach((name) => {
+      departments.forEach((d) => {
         const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name;
-        if (selected === name) opt.selected = true;
+        opt.value = d.id;
+        opt.textContent = d.name;
+        if (Number(selectedId) === d.id) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    async function populateLocationSelect(selectedId) {
+      let locations = state.locations;
+      if (!locations || !locations.length) {
+        const { data } = await api("/locations?pageSize=100");
+        const list = data && Array.isArray(data.data) ? data.data : [];
+        state.locations = list;
+        locations = state.locations;
+      }
+      const select = document.getElementById("location-select");
+      if (!select) return;
+      select.innerHTML = "";
+      if (!locations.length) {
+        select.innerHTML = '<option value="" disabled>No locations available</option>';
+        return;
+      }
+      locations.forEach((l) => {
+        const opt = document.createElement("option");
+        opt.value = l.id;
+        opt.textContent = `${l.country} - ${l.state}`;
+        if (Number(selectedId) === l.id) opt.selected = true;
         select.appendChild(opt);
       });
     }
@@ -571,6 +684,7 @@
       }
       if (hash === "#/jobs/new") {
         await populateDepartmentSelect(null);
+        await populateLocationSelect(null);
         return;
       }
       let type, id, mode;
@@ -604,9 +718,17 @@
                 ${field("lastName", "Last name", e)}
                 ${field("email", "Email", e, "email")}
                 ${field("phoneNumber", "Phone number", e)}
+                <label>Employment status
+                  <select name="employmentStatus" required>
+                    <option value="Hired" ${e.employmentStatus === "Hired" ? "selected" : ""}>Hired</option>
+                    <option value="Ex Employee" ${e.employmentStatus === "Ex Employee" ? "selected" : ""}>Ex Employee</option>
+                  </select>
+                </label>
+                <label>Hire date <input name="hireDate" type="date" value="${esc(e.hireDate)}" required /></label>
                 <label>Job (related)
                   <select name="jobId" id="job-select" required></select>
                 </label>
+                <div class="subtitle" id="dept-hint"></div>
                 <div class="form-actions">
                   <button class="primary" type="submit">Save changes</button>
                   <a class="btn" href="#/people/${e.id}" style="border:1px solid #cbd2d9">Cancel</a>
@@ -629,6 +751,9 @@
             </div>
             <div class="detail-row"><span class="k">Email</span><span class="v">${esc(e.email)}</span></div>
             <div class="detail-row"><span class="k">Phone</span><span class="v">${esc(e.phoneNumber)}</span></div>
+            <div class="detail-row"><span class="k">Employment status</span><span class="v">${employmentStatusBadge(e.employmentStatus)}</span></div>
+            <div class="detail-row"><span class="k">Hire date</span><span class="v">${esc(e.hireDate)}</span></div>
+            <div class="detail-row"><span class="k">Department</span><span class="v">${esc(e.department)}</span></div>
             <div class="detail-row"><span class="k">Job</span><span class="v">${jobName(e.jobId)}</span></div>
           </div>`;
       } else {
@@ -643,6 +768,15 @@
                 <label>Department
                   <select name="department" id="department-select" required></select>
                 </label>
+                <label>Employment type
+                  <select name="employmentType" required>
+                    <option value="Remote" ${j.employmentType === "Remote" ? "selected" : ""}>Remote</option>
+                    <option value="On-site" ${j.employmentType === "On-site" ? "selected" : ""}>On-site</option>
+                  </select>
+                </label>
+                <label>Location
+                  <select name="location" id="location-select" required></select>
+                </label>
                 <label>Status
                   <select name="status" required>
                     <option value="open" ${j.status === "open" ? "selected" : ""}>open</option>
@@ -656,7 +790,8 @@
               </form>
             </div>`;
           document.getElementById("entity-form").addEventListener("submit", submitForm);
-          await populateDepartmentSelect(j.department);
+          await populateDepartmentSelect(j.departmentId);
+          await populateLocationSelect(j.locationId);
           return;
         }
         app.innerHTML = `
@@ -670,6 +805,8 @@
               </div>
             </div>
             <div class="detail-row"><span class="k">Department</span><span class="v">${esc(j.department)}</span></div>
+            <div class="detail-row"><span class="k">Employment type</span><span class="v">${esc(j.employmentType)}</span></div>
+            <div class="detail-row"><span class="k">Location</span><span class="v">${locationText(j)}</span></div>
             <div class="detail-row"><span class="k">Description</span><span class="v">${esc(j.description)}</span></div>
           </div>`;
       }
@@ -704,14 +841,18 @@
       const body = type === "job" ? {
         name: form.name.value.trim(),
         description: form.description.value.trim(),
-        department: form.department.value.trim(),
+        departmentId: Number(form.department.value),
         status: form.status.value,
+        employmentType: form.employmentType.value,
+        locationId: Number(form.location.value),
       } : {
         firstName: form.firstName.value.trim(),
         lastName: form.lastName.value.trim(),
         email: form.email.value.trim(),
         phoneNumber: form.phoneNumber.value.trim(),
         jobId: Number(form.jobId.value),
+        employmentStatus: form.employmentStatus.value,
+        hireDate: form.hireDate.value,
       };
 
       const path = isEdit ? `/${type}s/${id}` : `/${type}s`;
@@ -749,17 +890,42 @@
       location.hash = "#/jobs";
     }
 
+    async function createDepartment(e) {
+      e.preventDefault();
+      const name = document.getElementById("dept-name").value.trim();
+      const description = document.getElementById("dept-desc").value.trim();
+      const { res, data } = await api("/departments", "POST", { name, description });
+      if (!res.ok) { showToast(extractErrors(data), "error"); return; }
+      await loadData();
+      showToast("Department created.");
+      render();
+    }
+
+    async function createLocation(e) {
+      e.preventDefault();
+      const country = document.getElementById("loc-country").value.trim();
+      const state = document.getElementById("loc-state").value.trim();
+      const { res, data } = await api("/locations", "POST", { country, state });
+      if (!res.ok) { showToast(extractErrors(data), "error"); return; }
+      await loadData();
+      showToast("Location created.");
+      render();
+    }
+
     async function loadData() {
-      const [empRes, jobRes] = await Promise.all([
+      const [empRes, jobRes, locRes] = await Promise.all([
         api("/employees?pageSize=100"),
         api("/jobs?pageSize=100"),
+        api("/locations?pageSize=100"),
       ]);
       state.employees = empRes.data && Array.isArray(empRes.data.data) ? empRes.data.data : [];
       state.jobs = jobRes.data && Array.isArray(jobRes.data.data) ? jobRes.data.data : [];
+      state.locations = locRes.data && Array.isArray(locRes.data.data) ? locRes.data.data : [];
       await Promise.all([
         loadPage("employees", null),
         loadPage("jobs", null),
         loadPage("departments", null),
+        loadPage("locations", null),
       ]);
     }
 

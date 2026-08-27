@@ -12,9 +12,13 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 
 ## Esquema
 
-**Employee** (campos obligatorios): `firstName`, `lastName`, `email`, `phoneNumber`, `jobId` (referencia al job).
+**Employee** (campos obligatorios): `firstName`, `lastName`, `email`, `phoneNumber`, `jobId` (referencia al job), `employmentStatus` (`Hired` | `Ex Employee`), `hireDate`. El campo `department` se deriva automáticamente del job asignado y no puede diferir del mismo.
 
-**Job** (campos obligatorios): `name`, `description`, `department`, `status` (`open` | `closed`).
+**Job** (campos obligatorios): `name`, `description`, `departmentId` (referencia al department), `status` (`open` | `closed`), `employmentType` (`Remote` | `On-site`), `locationId` (referencia al location).
+
+**Department**: `id`, `name`, `description` (breve descripción del área).
+
+**Location**: `id`, `country`, `state` (ej. `Spain` / `Barcelona`).
 
 ## API
 
@@ -30,11 +34,20 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 | POST | `/jobs` | Crea un job (todos los campos) |
 | PATCH | `/jobs/:id` | Actualiza parcial o totalmente un job |
 | DELETE | `/jobs/:id` | Elimina un job |
-| GET | `/departments` | Lista departamentos únicos (paginado por cursor) |
+| GET | `/departments` | Lista departamentos (paginado por cursor) |
+| GET | `/departments/:id` | Department por id |
+| POST | `/departments` | Crea un department (`name`, `description`) |
+| PATCH | `/departments/:id` | Actualiza un department |
+| DELETE | `/departments/:id` | Elimina un department (si no está en uso) |
+| GET | `/locations` | Lista locations (paginado por cursor) |
+| GET | `/locations/:id` | Location por id |
+| POST | `/locations` | Crea un location (`country`, `state`) |
+| PATCH | `/locations/:id` | Actualiza un location |
+| DELETE | `/locations/:id` | Elimina un location (si no está en uso) |
 
 ## Paginación (cursor)
 
-`GET /employees`, `GET /jobs` y `GET /departments` usan paginación por cursor:
+`GET /employees`, `GET /jobs`, `GET /departments` y `GET /locations` usan paginación por cursor:
 
 - `?pageSize=N` — tamaño de página (default `10`, máximo `100`).
 - `?cursor=...` — cursor opaco para la página siguiente (tomado de `next.cursor`).
