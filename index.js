@@ -6,7 +6,28 @@ const flowRouter = require("./integrations/flow");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+console.log(`[hris] starting - PORT=${PORT} JUNCTION_EVENTS_URL=${process.env.JUNCTION_EVENTS_URL || "https://junctiontraining.avature.net/junction/events/v2/-MSw1QmrDUfibjnwiEOdXY6xo2ODDQqMOtc7WcXW/ (default)"}`);
+
 app.use(express.json());
+
+app.use((req, res, next) => {
+  const started = Date.now();
+  res.on("finish", () => {
+    const pieces = [
+      `[hris] ${req.method} ${req.originalUrl}`,
+      `${res.statusCode}`,
+      `${Date.now() - started}ms`,
+      `ip=${req.ip}`,
+    ];
+    if (req.method === "POST") {
+      const body = req.body && Object.keys(req.body).length ? JSON.stringify(req.body) : "{}";
+      pieces.push(`body=${body.slice(0, 2000)}`);
+    }
+    if (Object.keys(req.query || {}).length) pieces.push(`query=${JSON.stringify(req.query)}`);
+    console.log(pieces.join(" "));
+  });
+  next();
+});
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -419,5 +440,5 @@ app.delete("/locations/:id", (req, res) => {
 app.use(express.static(path.join(__dirname, "public")));
 
 app.listen(PORT, () => {
-  console.log(`demo-hris listening on http://localhost:${PORT}`);
+  console.log(`[hris] listening on http://localhost:${PORT}`);
 });

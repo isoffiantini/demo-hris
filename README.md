@@ -113,5 +113,5 @@ Crea (o actualiza) el empleado en el HRIS y registra la ejecución del flow en l
 1. `INFO` — `Employee successfully created in the HRIS.` (o, si el email ya existía: `Employee email already exists - record updated.`). El `details` incluye la URL del empleado.
 2. `SUCCESS` — `Flow finished successfully.` (log final).
 
-El `dateTime` se envía con formato `yyyy-MM-dd'T'HH:mm:ss+00:00`. La respuesta es siempre `{ "asyncResponse": { "successful": true } }`, incluso si el email ya existía (en ese caso los logs lo explican sin enviar un `ERROR`).
+El `dateTime` se envía con formato `yyyy-MM-dd'T'HH:mm:ss.SSS+0000` (igual que `${now():format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")}` en NiFi). La respuesta es siempre `{ "asyncResponse": { "successful": true } }`, incluso si el email ya existía (en ese caso los logs lo explican sin enviar un `ERROR`).
 

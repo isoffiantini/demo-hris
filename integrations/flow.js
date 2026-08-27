@@ -66,7 +66,7 @@ function upsertEmployee(employee) {
 }
 
 function utcDateTime() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, "+00:00");
+  return new Date().toISOString().replace(/Z$/, "+0000");
 }
 
 function getHeaderValue(req, names) {
@@ -94,6 +94,7 @@ function resolveTrackingCode(req) {
     props.trackingCode,
     props.tracking_code,
     body.externalRef,
+    body.trackingCode,
   ];
   for (const candidate of candidates) {
     if (candidate !== undefined && candidate !== null && String(candidate).trim() !== "") {
@@ -101,6 +102,18 @@ function resolveTrackingCode(req) {
     }
   }
   return "";
+}
+
+function trackingDiagnostics(req) {
+  const relevantHeaders = Object.entries(req.headers || {})
+    .filter(([name]) => /track|external|ref|avature/i.test(name))
+    .map(([name, value]) => `${name}=${value}`);
+  return {
+    query: req.query || {},
+    relevantHeaders,
+    bodyKeys: Object.keys(req.body || {}),
+    propertiesKeys: Object.keys(((req.body || {}).properties) || {}),
+  };
 }
 
 function idFromValue(value) {
@@ -133,16 +146,20 @@ function resolveRecordId(req) {
   return null;
 }
 
-async function sendEventLogs(logs) {
+async function sendEventLogs(log) {
+  const payload = JSON.stringify({ logs: [log] });
+  console.log(`[junction] POST ${JUNCTION_EVENTS_URL} body=${payload.slice(0, 2000)}`);
   const res = await fetch(JUNCTION_EVENTS_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ logs }),
+    body: payload,
   });
+  console.log(`[junction] response status=${res.status}`);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`Junction events API responded ${res.status}: ${text}`);
   }
+  return res.status;
 }
 
 function employeeUrl(req, id) {
@@ -194,13 +211,24 @@ function buildEmployeeLogs(req, employee, upserted) {
 async function postLogsAsync(req, employee, upserted) {
   const { trackingCode, logs } = buildEmployeeLogs(req, employee, upserted);
   if (!trackingCode) {
-    console.warn("No tracking code provided; skipping junction event logs.");
+    console.warn(
+      `[flow_create_employee] No tracking code resolved; skipping junction event logs. diagnostics=${JSON.stringify(trackingDiagnostics(req))}`
+    );
     return;
   }
   try {
-    await sendEventLogs(logs);
+    for (const log of logs) {
+      try {
+        const status = await sendEventLogs(log);
+        console.log(
+          `[flow_create_employee] Logged event "${log.summary}" to junction (HTTP ${status}) with trackingCode=${trackingCode}`
+        );
+      } catch (err) {
+        console.error(`[flow_create_employee] Failed to send junction event log "${log.summary}": ${err.message}`);
+      }
+    }
   } catch (err) {
-    console.error("Failed to send junction event logs:", err.message);
+    console.error(`[flow_create_employee] Failed to send junction event logs: ${err.message}`);
   }
 }
 
@@ -215,10 +243,13 @@ router.post("/flow_create_employee", async (req, res) => {
     const upserted = upsertEmployee(employee);
 
     const trackingCode = resolveTrackingCode(req);
+    console.log(
+      `[flow_create_employee] trackingCode="${trackingCode}" diagnostics=${JSON.stringify(trackingDiagnostics(req))}`
+    );
     if (trackingCode) {
       void postLogsAsync(req, employee, upserted);
     } else {
-      console.warn("No tracking code provided; skipping junction event logs.");
+      console.warn("[flow_create_employee] No tracking code resolved; skipping junction event logs.");
     }
   } catch (err) {
     console.error("Flow create employee error:", err);
@@ -242,7 +273,7 @@ router.post("/flow_create_employee", async (req, res) => {
       };
       void (async () => {
         try {
-          await sendEventLogs([log]);
+          await sendEventLogs(log);
         } catch (logErr) {
           console.error("Failed to send junction error log:", logErr.message);
         }
