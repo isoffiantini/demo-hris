@@ -406,65 +406,36 @@
     }
 
     function employeeDetailView(id) {
-      const e = state.employees.find((emp) => emp.id === Number(id));
-      if (!e) return `<div class="card"><div class="msg error">Person not found.</div></div>`;
       return `
         <a class="back" href="#/people">← People</a>
-        <div class="card">
-          <div class="card-header">
-            <h2>${esc(e.firstName)} ${esc(e.lastName)}</h2>
-            <div class="actions">
-              <a class="btn primary" href="#/people/${e.id}/edit">Edit</a>
-              <button class="danger" onclick="deleteEmployee(${e.id})">Delete</button>
-            </div>
-          </div>
-          <div class="detail-row"><span class="k">Email</span><span class="v">${esc(e.email)}</span></div>
-          <div class="detail-row"><span class="k">Phone</span><span class="v">${esc(e.phoneNumber)}</span></div>
-          <div class="detail-row"><span class="k">Job</span><span class="v">${jobName(e.jobId)}</span></div>
-        </div>`;
+        <div class="card"><div class="msg">Loading...</div></div>`;
     }
 
     function jobDetailView(id) {
-      const j = state.jobs.find((job) => job.id === Number(id));
-      if (!j) return `<div class="card"><div class="msg error">Job not found.</div></div>`;
       return `
         <a class="back" href="#/jobs">← Jobs</a>
-        <div class="card">
-          <div class="card-header">
-            <h2>${esc(j.name)} ${statusBadge(j.status)}</h2>
-            <div class="actions">
-              <a class="btn primary" href="#/jobs/${j.id}/edit">Edit</a>
-              <button class="danger" onclick="deleteJob(${j.id})">Delete</button>
-            </div>
-          </div>
-          <div class="detail-row"><span class="k">Department</span><span class="v">${esc(j.department)}</span></div>
-          <div class="detail-row"><span class="k">Description</span><span class="v">${esc(j.description)}</span></div>
-        </div>`;
+        <div class="card"><div class="msg">Loading...</div></div>`;
     }
 
     function employeeFormView(id) {
       const isEdit = id != null;
-      const e = isEdit ? state.employees.find((emp) => emp.id === Number(id)) : null;
-      if (isEdit && !e) return `<div class="card"><div class="msg error">Person not found.</div></div>`;
-      const jobOptions = state.jobs.map((j) =>
-        `<option value="${j.id}" ${e && e.jobId === j.id ? "selected" : ""}>${esc(j.name)} (${esc(j.department)})</option>`
-      ).join("");
+      if (isEdit) {
+        return `<div class="card"><div class="msg">Loading...</div></div>`;
+      }
       return `
-        ${pageTitle(isEdit ? "Edit person" : "Create person")}
+        ${pageTitle("Create person")}
         <div class="card">
           <form id="entity-form">
-            ${field("firstName", "First name", e)}
-            ${field("lastName", "Last name", e)}
-            ${field("email", "Email", e, "email")}
-            ${field("phoneNumber", "Phone number", e)}
+            ${field("firstName", "First name", null)}
+            ${field("lastName", "Last name", null)}
+            ${field("email", "Email", null, "email")}
+            ${field("phoneNumber", "Phone number", null)}
             <label>Job (related)
-              <select name="jobId" required>
-                ${jobOptions}
-              </select>
+              <select name="jobId" id="job-select" required></select>
             </label>
             <div class="form-actions">
-              <button class="primary" type="submit">${isEdit ? "Save changes" : "Create person"}</button>
-              <a class="btn" href="${isEdit ? `#/people/${e.id}` : "#/people"}" style="border:1px solid #cbd2d9">Cancel</a>
+              <button class="primary" type="submit">Create person</button>
+              <a class="btn" href="#/people" style="border:1px solid #cbd2d9">Cancel</a>
             </div>
           </form>
         </div>`;
@@ -472,24 +443,25 @@
 
     function jobFormView(id) {
       const isEdit = id != null;
-      const j = isEdit ? state.jobs.find((job) => job.id === Number(id)) : null;
-      if (isEdit && !j) return `<div class="card"><div class="msg error">Job not found.</div></div>`;
+      if (isEdit) {
+        return `<div class="card"><div class="msg">Loading...</div></div>`;
+      }
       return `
-        ${pageTitle(isEdit ? "Edit job" : "Create job")}
+        ${pageTitle("Create job")}
         <div class="card">
           <form id="entity-form">
-            ${field("name", "Name", j)}
-            ${field("description", "Description", j)}
-            ${field("department", "Department", j)}
+            ${field("name", "Name", null)}
+            ${field("description", "Description", null)}
+            ${field("department", "Department", null)}
             <label>Status
               <select name="status" required>
-                <option value="open" ${j && j.status === "open" ? "selected" : ""}>open</option>
-                <option value="closed" ${j && j.status === "closed" ? "selected" : ""}>closed</option>
+                <option value="open">open</option>
+                <option value="closed">closed</option>
               </select>
             </label>
             <div class="form-actions">
-              <button class="primary" type="submit">${isEdit ? "Save changes" : "Create job"}</button>
-              <a class="btn" href="${isEdit ? `#/jobs/${j.id}` : "#/jobs"}" style="border:1px solid #cbd2d9">Cancel</a>
+              <button class="primary" type="submit">Create job</button>
+              <a class="btn" href="#/jobs" style="border:1px solid #cbd2d9">Cancel</a>
             </div>
           </form>
         </div>`;
@@ -538,10 +510,136 @@
           });
           const form = document.getElementById("entity-form");
           if (form) form.addEventListener("submit", submitForm);
+          loadDetailIfNeeded(hash);
           return;
         }
       }
       app.innerHTML = `<div class="card"><div class="msg error">Page not found.</div></div>`;
+    }
+
+    async function populateJobSelect(selectedId) {
+      if (!state.jobs.length) {
+        const { data } = await api("/jobs?pageSize=100");
+        state.jobs = Array.isArray(data) ? data : [];
+      }
+      const select = document.getElementById("job-select");
+      if (!select) return;
+      select.innerHTML = "";
+      if (!state.jobs.length) {
+        select.innerHTML = '<option value="" disabled>No jobs available</option>';
+        return;
+      }
+      state.jobs.forEach((j) => {
+        const opt = document.createElement("option");
+        opt.value = j.id;
+        opt.textContent = `${j.name} (${j.department})`;
+        if (Number(selectedId) === j.id) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    async function loadDetailIfNeeded(hash) {
+      if (hash === "#/people/new") {
+        await populateJobSelect(null);
+        return;
+      }
+      let type, id, mode;
+      const empDetail = hash.match(/^#\/people\/(\d+)$/);
+      if (empDetail) { type = "employee"; id = empDetail[1]; mode = "detail"; }
+      const empEdit = hash.match(/^#\/people\/(\d+)\/edit$/);
+      if (empEdit) { type = "employee"; id = empEdit[1]; mode = "edit"; }
+      const jobDetail = hash.match(/^#\/jobs\/(\d+)$/);
+      if (jobDetail) { type = "job"; id = jobDetail[1]; mode = "detail"; }
+      const jobEdit = hash.match(/^#\/jobs\/(\d+)\/edit$/);
+      if (jobEdit) { type = "job"; id = jobEdit[1]; mode = "edit"; }
+      if (!type) return;
+
+      const { res, data } = await api(`/${type}s/${id}`);
+      const app = document.getElementById("app");
+      if (!res.ok || !data) {
+        const back = type === "employee" ? "#/people" : "#/jobs";
+        app.innerHTML = `<a class="back" href="${back}">← Back</a>
+          <div class="card"><div class="msg error">${type === "employee" ? "Person" : "Job"} not found.</div></div>`;
+        return;
+      }
+
+      if (type === "employee") {
+        const e = data;
+        if (mode === "edit") {
+          app.innerHTML = `
+            ${pageTitle("Edit person")}
+            <div class="card">
+              <form id="entity-form">
+                ${field("firstName", "First name", e)}
+                ${field("lastName", "Last name", e)}
+                ${field("email", "Email", e, "email")}
+                ${field("phoneNumber", "Phone number", e)}
+                <label>Job (related)
+                  <select name="jobId" id="job-select" required></select>
+                </label>
+                <div class="form-actions">
+                  <button class="primary" type="submit">Save changes</button>
+                  <a class="btn" href="#/people/${e.id}" style="border:1px solid #cbd2d9">Cancel</a>
+                </div>
+              </form>
+            </div>`;
+          document.getElementById("entity-form").addEventListener("submit", submitForm);
+          await populateJobSelect(e.jobId);
+          return;
+        }
+        app.innerHTML = `
+          <a class="back" href="#/people">← People</a>
+          <div class="card">
+            <div class="card-header">
+              <h2>${esc(e.firstName)} ${esc(e.lastName)}</h2>
+              <div class="actions">
+                <a class="btn primary" href="#/people/${e.id}/edit">Edit</a>
+                <button class="danger" onclick="deleteEmployee(${e.id})">Delete</button>
+              </div>
+            </div>
+            <div class="detail-row"><span class="k">Email</span><span class="v">${esc(e.email)}</span></div>
+            <div class="detail-row"><span class="k">Phone</span><span class="v">${esc(e.phoneNumber)}</span></div>
+            <div class="detail-row"><span class="k">Job</span><span class="v">${jobName(e.jobId)}</span></div>
+          </div>`;
+      } else {
+        const j = data;
+        if (mode === "edit") {
+          app.innerHTML = `
+            ${pageTitle("Edit job")}
+            <div class="card">
+              <form id="entity-form">
+                ${field("name", "Name", j)}
+                ${field("description", "Description", j)}
+                ${field("department", "Department", j)}
+                <label>Status
+                  <select name="status" required>
+                    <option value="open" ${j.status === "open" ? "selected" : ""}>open</option>
+                    <option value="closed" ${j.status === "closed" ? "selected" : ""}>closed</option>
+                  </select>
+                </label>
+                <div class="form-actions">
+                  <button class="primary" type="submit">Save changes</button>
+                  <a class="btn" href="#/jobs/${j.id}" style="border:1px solid #cbd2d9">Cancel</a>
+                </div>
+              </form>
+            </div>`;
+          document.getElementById("entity-form").addEventListener("submit", submitForm);
+          return;
+        }
+        app.innerHTML = `
+          <a class="back" href="#/jobs">← Jobs</a>
+          <div class="card">
+            <div class="card-header">
+              <h2>${esc(j.name)} ${statusBadge(j.status)}</h2>
+              <div class="actions">
+                <a class="btn primary" href="#/jobs/${j.id}/edit">Edit</a>
+                <button class="danger" onclick="deleteJob(${j.id})">Delete</button>
+              </div>
+            </div>
+            <div class="detail-row"><span class="k">Department</span><span class="v">${esc(j.department)}</span></div>
+            <div class="detail-row"><span class="k">Description</span><span class="v">${esc(j.description)}</span></div>
+          </div>`;
+      }
     }
 
     // ---------- actions ----------
