@@ -1,7 +1,7 @@
 const express = require("express");
 const { readData, writeData, nextId } = require("../store");
 const { resolveTrackingCode, resolveRecordId, sendErrorLog, utcDateTime, resolveLogContext, makeLog, sendLogSafe } = require("./junction");
-const { attachForm, patchFormAt, coreFormBaseUrl, getEmployeeSyncForm, getAvatureRecordNames } = require("./hrisSync");
+const { attachForm, patchFormAt, getEmployeeSyncForm, getAvatureRecordNames } = require("./hrisSync");
 
 const router = express.Router();
 
@@ -146,13 +146,13 @@ async function handleWebhookEvent(req, avatureId) {
   console.log(`[webhook] record=${avatureId} -> step 5: HRIS employee id=${employee.id} names updated`);
 
   if (sync.formId) {
-    console.log(`[webhook] record=${avatureId} -> step 6: patching sync form id=${sync.formId} with Last Synced`);
+    console.log(`[webhook] record=${avatureId} -> step 6: patching sync form id=${sync.formId} with Last Synced (hrisSync REST API)`);
     await patchFormAt(avatureId, sync.formId, {
       hrisExternalId: sync.hrisExternalId,
       hrisUrl: employeeUrl(req, employee.id),
       syncDetails: "Success",
       lastSynced: utcDateTime(),
-    }, coreFormBaseUrl(avatureId));
+    });
     console.log(`[webhook] record=${avatureId} -> step 6 result: form patched (Last Synced updated)`);
   } else {
     console.warn(`[webhook] record=${avatureId} no formId available; Last Synced not updated`);

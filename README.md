@@ -159,7 +159,7 @@ En cada `POST`, para cada evento se procesa su `record.id` (el id de Avature):
 1. `GET {base}/rest/avature/core/v1/data/records_2/{id}/forms_hris_employee_sync?use_canonical_names=1` — si no existe el form, el registro no está sincronizado con el HRIS y se omite (`not-synced`).
 2. Si el form existe, se lee `hris_external_id` → id del empleado en el HRIS.
 3. `GET {base}/rest/avature/core/v1/data/records_2/{id}?use_canonical_names=1` — se obtienen `firstName` y `lastName`.
-4. Si difieren de los del empleado en el HRIS, se actualizan sus `firstName`/`lastName` y además se PATCHea el form de sincronización (`PATCH {base}/rest/avature/core/v1/data/records_2/{id}/forms_hris_employee_sync/{formId}`) actualizando `Last Synced` (mismo body que cuando se crea un empleado). Si coinciden se registra `match` y no se modifica nada.
+4. Si difieren de los del empleado en el HRIS, se actualizan sus `firstName`/`lastName` y además se PATCHea el form de sincronización `PATCH {base}/rest/hrisSync/people/{id}/form_{FORM_ID}/{formId}` (la misma REST API usada al crear un empleado) actualizando `Last Synced`. Si coinciden se registra `match` y no se modifica nada.
 
 El parseo es tolerante a formas de respuesta (`items`/`data`/array) y claves case-insensitive (`first_name`, `firstName`, `First Name`; `hris_external_id`, `hrisExternalId`, `HRIS External ID`). Usa las mismas variables de entorno (`AVATURE_REST_API_KEY`, `AVATURE_REST_BASE_URL`).
 
