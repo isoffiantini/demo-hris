@@ -90,3 +90,28 @@ Avature envía un header `Avature-Challenge-Code`. El endpoint responde `200` co
 
 Si no se envía el header, se devuelve el campo con valor vacío (aún `200`).
 
+### POST /flow_create_employee
+
+```
+POST /flow_create_employee
+```
+
+Crea (o actualiza) el empleado en el HRIS y registra la ejecución del flow en la API de Junction Events.
+
+**Input:** el payload de Avature (`{ "properties": { ... } }`) con `firstName`, `lastName`, `email`, `phone`, `job_hris_id`, y opcionalmente `recordId`.
+
+**Headers relevantes:**
+- `Avature-Tracking-Code` (o `Tracking-Code`, `X-Tracking-Code`): identifica la ejecución y se reenvía en los logs de Junction Events. Si no llega, no se envían logs.
+- `Avature-Record-Id` (opcional): usado como `recordId` si no viene en el body.
+
+**Tracking code:** Avature invoca `/flow_create_employee` directamente y el tracking code llega como query param `?externalRef=...` (equivalente a `${http.query.param.externalRef}` en NiFi). Se aceptan además estos fallbacks en este orden: query param `externalRef` → header (`Avature-Tracking-Code`, `Tracking-Code`, `X-Tracking-Code`) → body (`properties.externalRef`, `properties.trackingCode`, `externalRef`).
+
+**Deduplicación:** si ya existe un empleado con el mismo email, se actualiza el registro existente en lugar de crear uno nuevo.
+
+**Logs de Junction Events** (URL configurable con `JUNCTION_EVENTS_URL`): se envían dos entradas por ejecución con `recordTypeId: 2` (empleado) y `recordId` tomado de la request:
+
+1. `INFO` — `Employee successfully created in the HRIS.` (o, si el email ya existía: `Employee email already exists - record updated.`). El `details` incluye la URL del empleado.
+2. `SUCCESS` — `Flow finished successfully.` (log final).
+
+El `dateTime` se envía con formato `yyyy-MM-dd'T'HH:mm:ss+00:00`. La respuesta es siempre `{ "asyncResponse": { "successful": true } }`, incluso si el email ya existía (en ese caso los logs lo explican sin enviar un `ERROR`).
+
