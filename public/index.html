@@ -190,7 +190,7 @@
   <script>
     const PAGE_SIZE = 10;
     const CURRENT_USER = "Ignacio";
-    const state = { employees: [], jobs: [] };
+    const state = { employees: [], jobs: [], departments: [] };
     const pages = {
       employees: { list: [], pageCursor: null, next: null, prevStack: [], jobFilter: null },
       jobs: { list: [], pageCursor: null, next: null, prevStack: [] },
@@ -452,7 +452,9 @@
           <form id="entity-form">
             ${field("name", "Name", null)}
             ${field("description", "Description", null)}
-            ${field("department", "Department", null)}
+            <label>Department
+              <select name="department" id="department-select" required></select>
+            </label>
             <label>Status
               <select name="status" required>
                 <option value="open">open</option>
@@ -538,9 +540,37 @@
       });
     }
 
+    async function populateDepartmentSelect(selected) {
+      let departments = state.departments;
+      if (!departments || !departments.length) {
+        const { data } = await api("/departments?pageSize=100");
+        const list = data && Array.isArray(data.data) ? data.data : [];
+        state.departments = list.map((d) => d.name);
+        departments = state.departments;
+      }
+      const select = document.getElementById("department-select");
+      if (!select) return;
+      select.innerHTML = "";
+      if (!departments.length) {
+        select.innerHTML = '<option value="" disabled>No departments available</option>';
+        return;
+      }
+      departments.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        if (selected === name) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
     async function loadDetailIfNeeded(hash) {
       if (hash === "#/people/new") {
         await populateJobSelect(null);
+        return;
+      }
+      if (hash === "#/jobs/new") {
+        await populateDepartmentSelect(null);
         return;
       }
       let type, id, mode;
@@ -610,7 +640,9 @@
               <form id="entity-form">
                 ${field("name", "Name", j)}
                 ${field("description", "Description", j)}
-                ${field("department", "Department", j)}
+                <label>Department
+                  <select name="department" id="department-select" required></select>
+                </label>
                 <label>Status
                   <select name="status" required>
                     <option value="open" ${j.status === "open" ? "selected" : ""}>open</option>
@@ -624,6 +656,7 @@
               </form>
             </div>`;
           document.getElementById("entity-form").addEventListener("submit", submitForm);
+          await populateDepartmentSelect(j.department);
           return;
         }
         app.innerHTML = `
@@ -721,8 +754,8 @@
         api("/employees?pageSize=100"),
         api("/jobs?pageSize=100"),
       ]);
-      state.employees = Array.isArray(empRes.data) ? empRes.data : [];
-      state.jobs = Array.isArray(jobRes.data) ? jobRes.data : [];
+      state.employees = empRes.data && Array.isArray(empRes.data.data) ? empRes.data.data : [];
+      state.jobs = jobRes.data && Array.isArray(jobRes.data.data) ? jobRes.data.data : [];
       await Promise.all([
         loadPage("employees", null),
         loadPage("jobs", null),
