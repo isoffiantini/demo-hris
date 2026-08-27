@@ -58,3 +58,22 @@ GET /health
 ```
 
 Respuesta: `{ "status": "ok" }` usado para validar la conexión desde Apache NiFi (InvokeHTTP).
+
+## Integraciones
+
+Endpoints de integración viven en `integrations/` (router `integrations/flow.js`).
+
+### Challenge de Avature (flow_create_employee)
+
+```
+GET /flow_create_employee
+```
+
+Avature envía un header `Avature-Challenge-Code`. El endpoint responde `200` con un payload JSON que refleja el código recibido:
+
+```json
+{ "avature-challenge-code": "<valor del header>" }
+```
+
+Si no se envía el header, se devuelve el campo con valor vacío (aún `200`).
+

@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const { readData, writeData, nextId } = require("./store");
+const flowRouter = require("./integrations/flow");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,6 +11,8 @@ app.use(express.json());
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+app.use(flowRouter);
 
 function validateEmployee(body, partial) {
   const required = ["firstName", "lastName", "email", "phoneNumber", "jobId"];
