@@ -17,6 +17,14 @@ app.use(
 );
 
 app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Avature-Challenge-Code, X-Avature-REST-API-Key");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
+app.use((req, res, next) => {
   if ((req.headers["content-type"] || "").toLowerCase().includes("application/json")) {
     return next();
   }

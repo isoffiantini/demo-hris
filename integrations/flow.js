@@ -94,10 +94,15 @@ function persistSyncFormId(recordId, formId) {
 }
 
 router.get("/webhook", (req, res) => {
-  const challenge = req.get("avature-challenge-code") || "";
+  const challenge =
+    req.get("avature-challenge-code") ||
+    req.query["avature-challenge-code"] ||
+    req.query.challenge_code ||
+    req.query.challenge ||
+    "";
   const headers = req.headers || {};
   console.log(
-    `[webhook] GET challengeHeader="${challenge}" hasAvatureChallengeCode=${"avature-challenge-code" in headers} allRequestHeaders=${JSON.stringify(Object.keys(headers))}`
+    `[webhook] GET challengeHeader="${req.get("avature-challenge-code") || ""}" query=${JSON.stringify(req.query || {})} hasAvatureChallengeCode=${"avature-challenge-code" in headers} allRequestHeaders=${JSON.stringify(Object.keys(headers))}`
   );
   res.json({ "avature-challenge-code": challenge });
 });
@@ -179,6 +184,8 @@ router.post("/webhook", async (req, res) => {
   }
   console.log(`[webhook] POST totalCount=${payload.totalCount ?? events.length} events=${events.length} rawEvent=${events.length ? JSON.stringify(events[0]) : "(none)"}`);
 
+  res.json({ success: true });
+
   for (const ev of events) {
     const avatureId = ev.record && ev.record.id;
     const subscriptionType = ev.subscription && ev.subscription.type;
@@ -194,8 +201,6 @@ router.post("/webhook", async (req, res) => {
       console.error(`[webhook] record=${avatureId} -> failed: ${err.message}`);
     }
   }
-
-  res.json({ success: true });
 });
 
 router.get("/flow_create_employee", (req, res) => {

@@ -148,7 +148,9 @@ Las requests se autentican con el header `X-Avature-REST-API-Key`. **Variables d
 
 ### Webhook de Avature (`/webhook`)
 
-Recibe eventos de webhooks de Avature (por ejemplo `record_2.fieldEdited`). Un `GET` responde el challenge de Avature (`avature-challenge-code`) igual que `flow_create_employee`.
+Recibe eventos de webhooks de Avature (por ejemplo `record_2.fieldEdited`). Un `GET` responde el challenge de Avature (`avature-challenge-code`) igual que `flow_create_employee`; también acepta el challenge como query param (`challenge_code`, `challenge`).
+
+El `POST` responde `200 { "success": true }` **inmediatamente** (para no exceder el timeout de webhooks de Avature) y procesa los eventos de forma asíncrona. El endpoint soporta CORS/`OPTIONS` (preflight) para que el webhook pueda entregarse desde el navegador.
 
 En cada `POST`, para cada evento se procesa su `record.id` (el id de Avature):
 
