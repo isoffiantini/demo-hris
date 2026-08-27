@@ -242,6 +242,15 @@ app.get("/employees", (req, res) => {
       );
     }
   }
+  if (req.query.employmentStatus !== undefined) {
+    const status = String(req.query.employmentStatus).trim();
+    if (status && !EMPLOYMENT_STATUSES.includes(status)) {
+      return res.status(400).json({ errors: ["employmentStatus must be 'Hired' or 'Ex Employee'"] });
+    }
+    if (status) {
+      list = list.filter((e) => e.employmentStatus === status);
+    }
+  }
   let sortFn = null;
   if (req.query.sort !== undefined) {
     if (String(req.query.sort) !== "hireDate") {
@@ -312,7 +321,16 @@ app.delete("/employees/:id", (req, res) => {
 
 app.get("/jobs", (req, res) => {
   const { data } = getEntity("jobs");
-  const jobs = data.jobs.map(serializeJob);
+  let jobs = data.jobs.map(serializeJob);
+  if (req.query.status !== undefined) {
+    const status = String(req.query.status).trim();
+    if (status && !JOB_STATUSES.includes(status)) {
+      return res.status(400).json({ errors: ["status must be 'open' or 'closed'"] });
+    }
+    if (status) {
+      jobs = jobs.filter((j) => j.status === status);
+    }
+  }
   res.json(paginateCursor(jobs, req));
 });
 

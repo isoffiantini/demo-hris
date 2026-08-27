@@ -201,8 +201,8 @@
     const CURRENT_USER = "Ignacio";
     const state = { employees: [], jobs: [], departments: [], locations: [] };
     const pages = {
-      employees: { list: [], pageCursor: null, next: null, prevStack: [], jobFilter: null, nameFilter: null, sortFilter: null },
-      jobs: { list: [], pageCursor: null, next: null, prevStack: [] },
+      employees: { list: [], pageCursor: null, next: null, prevStack: [], jobFilter: null, nameFilter: null, sortFilter: null, statusFilter: null },
+      jobs: { list: [], pageCursor: null, next: null, prevStack: [], statusFilter: null },
       departments: { list: [], pageCursor: null, next: null, prevStack: [] },
       locations: { list: [], pageCursor: null, next: null, prevStack: [] },
     };
@@ -269,6 +269,7 @@
       let url = `/${type}?pageSize=${PAGE_SIZE}`;
       if (p.jobFilter) url += `&jobId=${p.jobFilter}`;
       if (p.nameFilter) url += `&firstName=${encodeURIComponent(p.nameFilter)}`;
+      if (p.statusFilter) url += `&${type === "employees" ? "employmentStatus" : "status"}=${encodeURIComponent(p.statusFilter)}`;
       if (p.sortFilter) {
         const [sort, order] = p.sortFilter.split("_");
         url += `&sort=${sort}`;
@@ -369,6 +370,13 @@
                 <option value="hireDate_desc" ${pages.employees.sortFilter === "hireDate_desc" ? "selected" : ""}>Hire date ↓ (newest first)</option>
               </select>
             </label>
+            <label>Filter by status
+              <select id="employee-status-filter" onchange="applyEmployeeStatusFilter()">
+                <option value="">All statuses</option>
+                <option value="Hired" ${pages.employees.statusFilter === "Hired" ? "selected" : ""}>Hired</option>
+                <option value="Ex Employee" ${pages.employees.statusFilter === "Ex Employee" ? "selected" : ""}>Ex Employee</option>
+              </select>
+            </label>
           </div>
           ${employeeTable(pages.employees.list)}
           ${paginationControls("employees")}
@@ -382,6 +390,15 @@
           <div class="card-header">
             <h2>Jobs</h2>
             <a class="btn primary" href="#/jobs/new">Create job</a>
+          </div>
+          <div class="filter-bar">
+            <label>Filter by status
+              <select id="job-status-filter" onchange="applyJobStatusFilter()">
+                <option value="">All statuses</option>
+                <option value="open" ${pages.jobs.statusFilter === "open" ? "selected" : ""}>open</option>
+                <option value="closed" ${pages.jobs.statusFilter === "closed" ? "selected" : ""}>closed</option>
+              </select>
+            </label>
           </div>
           ${jobTable(pages.jobs.list)}
           ${paginationControls("jobs")}
@@ -871,6 +888,24 @@
       p.sortFilter = select.value || null;
       p.prevStack = [];
       await loadPage("employees", null);
+      render();
+    }
+
+    async function applyEmployeeStatusFilter() {
+      const select = document.getElementById("employee-status-filter");
+      const p = pages.employees;
+      p.statusFilter = select.value || null;
+      p.prevStack = [];
+      await loadPage("employees", null);
+      render();
+    }
+
+    async function applyJobStatusFilter() {
+      const select = document.getElementById("job-status-filter");
+      const p = pages.jobs;
+      p.statusFilter = select.value || null;
+      p.prevStack = [];
+      await loadPage("jobs", null);
       render();
     }
 

@@ -93,6 +93,21 @@ function persistSyncFormId(recordId, formId) {
   }
 }
 
+router.get("/webhook", (req, res) => {
+  const challenge = req.get("avature-challenge-code") || "";
+  res.json({ "avature-challenge-code": challenge });
+});
+
+router.post("/webhook", (req, res) => {
+  const payload = req.body || {};
+  const tracking = resolveTrackingCode(req);
+  const challenge = req.get("avature-challenge-code") || "";
+  console.log(
+    `[webhook] POST trackingCode="${tracking}" challenge="${challenge}" query=${JSON.stringify(req.query || {})} body=${JSON.stringify(payload)}`
+  );
+  res.json({ success: true });
+});
+
 router.get("/flow_create_employee", (req, res) => {
   const challenge = req.get("avature-challenge-code") || "";
   res.json({ "avature-challenge-code": challenge });
