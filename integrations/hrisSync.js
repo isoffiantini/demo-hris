@@ -17,13 +17,13 @@ function formUrl(personId) {
   return `${AVATURE_REST_BASE_URL}/rest/hrisSync/people/${personId}/form_${HRIS_SYNC_FORM_ID}`;
 }
 
-function formBody(personId, hrisExternalId, lastSynced, hrisUrl) {
+function formBody(personId, fields) {
   return {
     personId: Number(personId),
-    "HRIS External ID": String(hrisExternalId),
-    "HRIS URL": hrisUrl || null,
-    "Sync Details": "Success",
-    "Last Synced": String(lastSynced),
+    "HRIS External ID": String(fields.hrisExternalId ?? ""),
+    "HRIS URL": fields.hrisUrl || null,
+    "Sync Details": String(fields.syncDetails ?? "Success"),
+    "Last Synced": String(fields.lastSynced ?? ""),
   };
 }
 
@@ -60,16 +60,16 @@ function extractFormId(parsed) {
   return null;
 }
 
-async function attachForm(personId, hrisExternalId, lastSynced, hrisUrl) {
+async function attachForm(personId, fields) {
   if (!AVATURE_REST_API_KEY) {
     console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; skipping form sync.");
     return { action: "skipped", reason: "missing api key" };
   }
 
   const baseUrl = formUrl(personId);
-  const body = formBody(personId, hrisExternalId, lastSynced, hrisUrl);
+  const body = formBody(personId, fields);
 
-  console.log(`[hrisSync] GET ${baseUrl} (personId=${personId} hrisId=${hrisExternalId})`);
+  console.log(`[hrisSync] GET ${baseUrl} (personId=${personId} hrisId=${fields.hrisExternalId})`);
   const get = await requestJson(baseUrl, { headers: apiKeyHeaders() });
   console.log(`[hrisSync] GET status=${get.res.status}`);
   if (!get.res.ok) {

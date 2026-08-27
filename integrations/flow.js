@@ -108,6 +108,25 @@ router.post("/flow_create_employee", async (req, res) => {
         recordTypeId: RECORD_TYPE_EMPLOYEE,
         message: `Validation failed: ${validationErrors.join(", ")}`,
       });
+
+      const errorPersonId = resolveRecordId(req);
+      if (errorPersonId !== null && errorPersonId !== "") {
+        void (async () => {
+          try {
+            await attachForm(errorPersonId, {
+              hrisExternalId: "",
+              hrisUrl: null,
+              syncDetails: `Validation failed: ${validationErrors.join(", ")}`,
+              lastSynced: utcDateTime(),
+            });
+          } catch (err) {
+            console.error(`[hrisSync] Failed to attach form on validation error: ${err.message}`);
+          }
+        })();
+      } else {
+        console.warn("[hrisSync] No Avature person id; cannot attach form on validation error.");
+      }
+
       return res
         .status(400)
         .json({ asyncResponse: { successful: false, errors: validationErrors } });
@@ -146,7 +165,12 @@ router.post("/flow_create_employee", async (req, res) => {
       }
 
       try {
-        const result = await attachForm(personId, record.id, utcDateTime(), employeeUrl(req, record.id));
+        const result = await attachForm(personId, {
+          hrisExternalId: record.id,
+          hrisUrl: employeeUrl(req, record.id),
+          syncDetails: "Success",
+          lastSynced: utcDateTime(),
+        });
         persistSyncFormId(record.id, result.formId);
         if (result.action === "skipped") {
           console.warn(`[hrisSync] Form sync skipped: ${result.reason}`);

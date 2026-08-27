@@ -137,7 +137,7 @@ El body de POST y PATCH es:
 
 `HRIS URL` usa la variable `HRIS_BASE_URL` (por defecto `https://demo-hris.onrender.com`). `Sync Details` es siempre `"Success"` cuando el sync se completa.
 
-**Validación:** si `firstName`, `lastName` o `email` faltan o vienen vacíos, NO se crea el empleado: responde `400` con `{ "asyncResponse": { "successful": false, "errors": [...] } }` y se registra un log `ERROR` en la ejecución (Junction Events).
+**Validación:** si `firstName`, `lastName` o `email` faltan o vienen vacíos, NO se crea el empleado: responde `400` con `{ "asyncResponse": { "successful": false, "errors": [...] } }` y se registra un log `ERROR` en la ejecución (Junction Events). En ese caso el form de Avature se adjunta igualmente, pero sólo con `Sync Details` (mensaje del error) y `Last Synced`; el resto de los campos (`HRIS External ID`, `HRIS URL`) van vacíos.
 
 Las requests se autentican con el header `X-Avature-REST-API-Key`. **Variables de entorno (en Render → Environment, nunca en el código):**
 - `AVATURE_REST_API_KEY` — el valor de la API key (producción).
