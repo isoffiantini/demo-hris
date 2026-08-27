@@ -121,6 +121,8 @@ El `dateTime` se envía con formato `yyyy-MM-dd'T'HH:mm:ss.SSS+0000` (igual que 
 2. Si no existe → `POST {base}/rest/hrisSync/people/{personId}/form_838` (crea).
 3. Si existe → se obtiene el `formId` de la respuesta y `PATCH {base}/rest/hrisSync/people/{personId}/form_838/{formId}` (actualiza).
 
+**Dedupe del form:** el `personId` de Avature se persiste en el empleado (`avaturePersonId`). Si el mismo email ya existía en el HRIS, se reutiliza el `avaturePersonId` almacenado (nunca se crea un segundo form): el flujo hace `GET` del form existente y sólo lo actualiza con `PATCH`.
+
 El body de POST y PATCH es:
 
 ```json

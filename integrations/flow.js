@@ -36,20 +36,29 @@ function departmentForJob(data, jobId) {
   return dept ? dept.name : "";
 }
 
-function upsertEmployee(employee) {
+function upsertEmployee(employee, avaturePersonId) {
   const data = readData();
   const email = (employee.email || "").toLowerCase();
   const existing = data.employees.find((e) => (e.email || "").toLowerCase() === email);
   const department = departmentForJob(data, employee.jobId);
+  const storedPersonId = avaturePersonId === null || avaturePersonId === undefined || avaturePersonId === ""
+    ? null
+    : avaturePersonId;
 
   if (existing) {
-    const updated = { ...existing, ...employee, department, id: existing.id };
+    const updated = {
+      ...existing,
+      ...employee,
+      department,
+      id: existing.id,
+      avaturePersonId: existing.avaturePersonId || storedPersonId,
+    };
     data.employees = data.employees.map((e) => (e.id === existing.id ? updated : e));
     writeData(data);
     return { record: updated, created: false };
   }
 
-  const record = { id: nextId(data.employees), ...employee, department };
+  const record = { id: nextId(data.employees), ...employee, department, avaturePersonId: storedPersonId };
   data.employees.push(record);
   writeData(data);
   return { record, created: true };
@@ -67,7 +76,9 @@ router.get("/flow_create_employee", (req, res) => {
 router.post("/flow_create_employee", async (req, res) => {
   try {
     const employee = toEmployeePayload(req.body);
-    const { record, created } = upsertEmployee(employee);
+    const requestPersonId = resolveRecordId(req);
+    const { record, created } = upsertEmployee(employee, requestPersonId);
+    const personId = record.avaturePersonId;
     const url = employeeUrl(req, record.id);
 
     const infoSummary = created
@@ -78,9 +89,8 @@ router.post("/flow_create_employee", async (req, res) => {
       : `An employee with email ${employee.email} already existed in the HRIS. The corresponding record was updated with the information received. You can view the record at ${url}`;
 
     const trackingCode = resolveTrackingCode(req);
-    const personId = resolveRecordId(req);
     console.log(
-      `[flow_create_employee] trackingCode="${trackingCode}" recordIdFromPayload=${JSON.stringify(personId)} body=${JSON.stringify(req.body || {})}`
+      `[flow_create_employee] trackingCode="${trackingCode}" recordIdFromPayload=${JSON.stringify(requestPersonId)} avaturePersonId=${JSON.stringify(personId)} body=${JSON.stringify(req.body || {})}`
     );
 
     void (async () => {
