@@ -40,6 +40,21 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
+  if (!req.body || !Object.keys(req.body).length) {
+    const raw = typeof req.rawBody === "string" ? req.rawBody.trim() : "";
+    if (raw.startsWith("{") || raw.startsWith("[")) {
+      try {
+        req.body = JSON.parse(req.rawBody);
+        console.log(`[hris] parsed JSON body from raw body (content-type="${req.headers["content-type"] || "(none)"}")`);
+      } catch (err) {
+        console.warn(`[hris] raw body was not valid JSON: ${req.rawBody.slice(0, 300)}`);
+      }
+    }
+  }
+  next();
+});
+
+app.use((req, res, next) => {
   const started = Date.now();
   res.on("finish", () => {
     const pieces = [

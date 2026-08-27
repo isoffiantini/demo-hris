@@ -152,6 +152,8 @@ Recibe eventos de webhooks de Avature (por ejemplo `record_2.fieldEdited`). Un `
 
 El `POST` responde `200 { "success": true }` **inmediatamente** (para no exceder el timeout de webhooks de Avature) y procesa los eventos de forma asíncrona. El endpoint soporta CORS/`OPTIONS` (preflight) para que el webhook pueda entregarse desde el navegador.
 
+**Nota importante:** Avature entrega el webhook **sin** header `Content-Type` (o con `application/x-www-form-urlencoded`). Si `express.json()` no parsea el body, hay un fallback que intenta parsear el `rawBody` como JSON independientemente del content type.
+
 En cada `POST`, para cada evento se procesa su `record.id` (el id de Avature):
 
 1. `GET {base}/rest/avature/core/v1/data/records_2/{id}/forms_hris_employee_sync?use_canonical_names=1` — si no existe el form, el registro no está sincronizado con el HRIS y se omite (`not-synced`).
