@@ -31,16 +31,30 @@ async function requestJson(url, options) {
   return { res, text };
 }
 
+function extractFormIdFromItem(item) {
+  if (!item || typeof item !== "object") return null;
+  if (item.id !== undefined && item.id !== null) return item.id;
+  if (item.formId !== undefined && item.formId !== null) return item.formId;
+  return null;
+}
+
 function extractFormId(parsed) {
+  if (!parsed || typeof parsed !== "object") return null;
   if (Array.isArray(parsed)) {
     for (const item of parsed) {
-      if (item && item.id !== undefined) return item.id;
-      if (item && item.formId !== undefined) return item.formId;
+      const id = extractFormIdFromItem(item);
+      if (id !== null) return id;
     }
     return null;
   }
-  if (parsed && parsed.id !== undefined) return parsed.id;
-  if (parsed && parsed.formId !== undefined) return parsed.formId;
+  const direct = extractFormIdFromItem(parsed);
+  if (direct !== null) return direct;
+  if (Array.isArray(parsed.items)) {
+    for (const item of parsed.items) {
+      const id = extractFormIdFromItem(item);
+      if (id !== null) return id;
+    }
+  }
   return null;
 }
 
@@ -56,9 +70,15 @@ async function attachForm(personId, hrisExternalId, lastSynced) {
   console.log(`[hrisSync] GET ${baseUrl} (personId=${personId} hrisId=${hrisExternalId})`);
   const get = await requestJson(baseUrl, { headers: apiKeyHeaders() });
   console.log(`[hrisSync] GET status=${get.res.status}`);
+  if (!get.res.ok) {
+    throw new Error(`hrisSync GET failed: ${get.res.status} ${get.text}`);
+  }
 
-  if (get.res.status === 404) {
-    console.log("[hrisSync] Form not found; creating it");
+  const getJson = parseJson(get.text);
+  const items = getJson && Array.isArray(getJson.items) ? getJson.items : [];
+
+  if (!items.length) {
+    console.log("[hrisSync] No form exists (empty items); creating it");
     const post = await requestJson(baseUrl, {
       method: "POST",
       headers: apiKeyHeaders(),
@@ -68,26 +88,21 @@ async function attachForm(personId, hrisExternalId, lastSynced) {
     if (!post.res.ok) {
       throw new Error(`hrisSync POST failed: ${post.res.status} ${post.text}`);
     }
-    return { action: "created", status: post.res.status };
+    const createdId = extractFormId(parseJson(post.text));
+    return {
+      action: "created",
+      status: post.res.status,
+      formId: createdId === null ? undefined : createdId,
+    };
   }
 
-  if (!get.res.ok) {
-    throw new Error(`hrisSync GET failed: ${get.res.status} ${get.text}`);
-  }
-
-  let parsed = null;
-  try {
-    parsed = JSON.parse(get.text);
-  } catch (e) {
-    parsed = null;
-  }
-  const formId = extractFormId(parsed);
+  const formId = extractFormIdFromItem(items[0]);
   if (formId === null || formId === undefined) {
     throw new Error(`hrisSync could not extract form id from GET response: ${get.text.slice(0, 500)}`);
   }
 
   const patchUrl = `${baseUrl}/${formId}`;
-  console.log(`[hrisSync] Form id=${formId}; updating`);
+  console.log(`[hrisSync] Found form id=${formId}; updating`);
   const patch = await requestJson(patchUrl, {
     method: "PATCH",
     headers: apiKeyHeaders(),
@@ -98,6 +113,14 @@ async function attachForm(personId, hrisExternalId, lastSynced) {
     throw new Error(`hrisSync PATCH failed: ${patch.res.status} ${patch.text}`);
   }
   return { action: "updated", status: patch.res.status, formId };
+}
+
+function parseJson(text) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 module.exports = {

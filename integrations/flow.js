@@ -68,6 +68,19 @@ function employeeUrl(req, id) {
   return `${req.protocol}://${req.get("host")}/#/people/${id}`;
 }
 
+function persistSyncFormId(recordId, formId) {
+  if (formId === undefined || formId === null || formId === "") return;
+  const data = readData();
+  const employee = data.employees.find((e) => e.id === recordId);
+  if (employee && String(employee.avatureSyncFormId || "") !== String(formId)) {
+    data.employees = data.employees.map((e) =>
+      e.id === recordId ? { ...e, avatureSyncFormId: formId } : e
+    );
+    writeData(data);
+    console.log(`[hrisSync] Persisted avatureSyncFormId=${formId} on employee ${recordId}`);
+  }
+}
+
 router.get("/flow_create_employee", (req, res) => {
   const challenge = req.get("avature-challenge-code") || "";
   res.json({ "avature-challenge-code": challenge });
@@ -110,6 +123,7 @@ router.post("/flow_create_employee", async (req, res) => {
 
       try {
         const result = await attachForm(personId, record.id, utcDateTime());
+        persistSyncFormId(record.id, result.formId);
         if (result.action === "skipped") {
           console.warn(`[hrisSync] Form sync skipped: ${result.reason}`);
           await sendLogSafe(
