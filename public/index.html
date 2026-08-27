@@ -20,8 +20,15 @@
       justify-content: space-between;
     }
     header h1 { font-size: 20px; }
-    header a { color: #fff; text-decoration: none; font-size: 14px; opacity: 0.9; }
-    header a:hover { opacity: 1; text-decoration: underline; }
+    header a {
+      color: #fff;
+      text-decoration: none;
+      opacity: 0.9;
+      display: flex;
+      align-items: center;
+    }
+    header a:hover { opacity: 1; }
+    header a svg { width: 22px; height: 22px; }
     main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
     .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
     .tabs a {
@@ -48,7 +55,7 @@
       margin-bottom: 16px;
     }
     .card-header h2 { margin-bottom: 0; }
-    form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    form { display: flex; flex-direction: column; gap: 12px; max-width: 420px; }
     label { display: flex; flex-direction: column; font-size: 13px; color: #52606d; gap: 4px; }
     input, select {
       padding: 9px 10px;
@@ -96,7 +103,11 @@
 <body>
   <header>
     <h1>Demo HRIS</h1>
-    <a href="#/">Home</a>
+    <a href="#/" title="Home" aria-label="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>
+      </svg>
+    </a>
   </header>
 
   <main id="app"></main>
