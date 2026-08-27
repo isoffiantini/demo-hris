@@ -25,7 +25,7 @@ function validateEmployee(body, partial) {
 }
 
 function validateJob(body, partial) {
-  const required = ["name", "description", "department"];
+  const required = ["name", "description", "department", "status"];
   const errors = [];
   for (const field of required) {
     if (!partial && !(field in body)) {
@@ -33,6 +33,9 @@ function validateJob(body, partial) {
     } else if (body[field] !== undefined && (body[field] === "" || body[field] === null)) {
       errors.push(`${field} cannot be empty`);
     }
+  }
+  if (body.status !== undefined && !["open", "closed"].includes(body.status)) {
+    errors.push("status must be either 'open' or 'closed'");
   }
   return errors;
 }
@@ -89,6 +92,16 @@ app.patch("/employees/:id", (req, res) => {
   res.json(updated);
 });
 
+app.delete("/employees/:id", (req, res) => {
+  const { data, entity } = getEntity("employees", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Employee not found" });
+  }
+  data.employees = data.employees.filter((item) => item.id !== entity.id);
+  writeData(data);
+  res.status(204).end();
+});
+
 app.get("/jobs", (req, res) => {
   const { data } = getEntity("jobs");
   res.json(data.jobs);
@@ -121,6 +134,16 @@ app.patch("/jobs/:id", (req, res) => {
   data.jobs = data.jobs.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);
   res.json(updated);
+});
+
+app.delete("/jobs/:id", (req, res) => {
+  const { data, entity } = getEntity("jobs", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Job not found" });
+  }
+  data.jobs = data.jobs.filter((item) => item.id !== entity.id);
+  writeData(data);
+  res.status(204).end();
 });
 
 app.use(express.static(path.join(__dirname, "public")));

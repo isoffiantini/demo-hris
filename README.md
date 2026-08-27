@@ -14,7 +14,7 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 
 **Employee** (campos obligatorios): `firstName`, `lastName`, `email`, `phoneNumber`, `jobId` (referencia al job).
 
-**Job** (campos obligatorios): `name`, `description`, `department`.
+**Job** (campos obligatorios): `name`, `description`, `department`, `status` (`open` | `closed`).
 
 ## API
 
@@ -24,10 +24,12 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 | GET | `/employees/:id` | Empleado por id |
 | POST | `/employees` | Crea un empleado (todos los campos) |
 | PATCH | `/employees/:id` | Actualiza parcial o totalmente un empleado |
+| DELETE | `/employees/:id` | Elimina un empleado |
 | GET | `/jobs` | Lista todos los jobs |
 | GET | `/jobs/:id` | Job por id |
 | POST | `/jobs` | Crea un job (todos los campos) |
 | PATCH | `/jobs/:id` | Actualiza parcial o totalmente un job |
+| DELETE | `/jobs/:id` | Elimina un job |
 
 ## Health
 

@@ -14,23 +14,25 @@
     header {
       background: #16324f;
       color: #fff;
-      padding: 20px 32px;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    header h1 { font-size: 22px; font-weight: 600; }
+    header h1 { font-size: 20px; }
+    header a { color: #fff; text-decoration: none; font-size: 14px; opacity: 0.9; }
+    header a:hover { opacity: 1; text-decoration: underline; }
     main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
     .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-    .tabs button {
+    .tabs a {
       padding: 10px 18px;
-      border: none;
       border-radius: 8px 8px 0 0;
       background: #d7dde3;
-      cursor: pointer;
+      text-decoration: none;
       font-size: 15px;
       color: #1f2933;
     }
-    .tabs button.active { background: #fff; font-weight: 600; }
-    .panel { display: none; }
-    .panel.active { display: block; }
+    .tabs a.active { background: #fff; font-weight: 600; }
     .card {
       background: #fff;
       border-radius: 10px;
@@ -39,6 +41,13 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     .card h2 { font-size: 17px; margin-bottom: 16px; color: #16324f; }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .card-header h2 { margin-bottom: 0; }
     form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
     label { display: flex; flex-direction: column; font-size: 13px; color: #52606d; gap: 4px; }
     input, select {
@@ -47,76 +56,50 @@
       border-radius: 6px;
       font-size: 14px;
     }
-    button.primary {
-      background: #16324f;
-      color: #fff;
+    button, .btn {
       border: none;
-      padding: 10px 18px;
+      padding: 9px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
-      align-self: end;
+      text-decoration: none;
+      display: inline-block;
     }
-    button.primary:hover { background: #1f456b; }
+    button.primary, .btn.primary { background: #16324f; color: #fff; }
+    button.primary:hover, .btn.primary:hover { background: #1f456b; }
+    button.danger, .btn.danger { background: #c0392b; color: #fff; }
+    button.danger:hover, .btn.danger:hover { background: #a93226; }
+    .form-actions { display: flex; gap: 10px; margin-top: 8px; align-items: center; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; }
     th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e4e7eb; font-size: 14px; }
     th { background: #f4f5f7; color: #52606d; font-weight: 600; }
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: #f0f4f8; }
     .msg { margin-top: 12px; font-size: 14px; }
     .msg.error { color: #c0392b; }
     .msg.success { color: #20804f; }
-    .actions button {
-      margin-right: 6px; padding: 4px 10px; border-radius: 5px;
-      border: 1px solid #cbd2d9; background: #fff; cursor: pointer; font-size: 13px;
-    }
-    .actions button.edit { color: #16324f; }
     .empty { color: #7b8794; padding: 12px 0; font-size: 14px; }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+    }
+    .badge.open { background: #d3f1e0; color: #11653c; }
+    .badge.closed { background: #fae3e0; color: #99201a; }
+    .detail-row { display: flex; padding: 10px 0; border-bottom: 1px solid #e4e7eb; font-size: 14px; }
+    .detail-row .k { width: 160px; color: #52606d; font-weight: 600; }
+    .detail-row .v { color: #1f2933; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .back { display: inline-block; margin-bottom: 16px; color: #16324f; text-decoration: none; font-size: 14px; }
+    .back:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <header><h1>Demo HRIS</h1></header>
+  <header>
+    <h1>Demo HRIS</h1>
+    <a href="#/">Home</a>
+  </header>
 
-  <main>
-    <div class="tabs">
-      <button id="tab-employees" class="active" onclick="showTab('employees')">Employees</button>
-      <button id="tab-jobs" onclick="showTab('jobs')">Jobs</button>
-    </div>
-
-    <section id="panel-employees" class="panel active">
-      <div class="card">
-        <h2>Add Employee</h2>
-        <form id="employee-form">
-          <label>First name <input name="firstName" required /></label>
-          <label>Last name <input name="lastName" required /></label>
-          <label>Email <input name="email" type="email" required /></label>
-          <label>Phone number <input name="phoneNumber" required /></label>
-          <label>Job (related) <select name="jobId" required></select></label>
-          <button class="primary" type="submit">Add employee</button>
-        </form>
-        <div class="msg" id="employee-msg"></div>
-      </div>
-      <div class="card">
-        <h2>Employees</h2>
-        <div id="employee-list"></div>
-      </div>
-    </section>
-
-    <section id="panel-jobs" class="panel">
-      <div class="card">
-        <h2>Add Job</h2>
-        <form id="job-form">
-          <label>Name <input name="name" required /></label>
-          <label>Description <input name="description" required /></label>
-          <label>Department <input name="department" required /></label>
-          <button class="primary" type="submit">Add job</button>
-        </form>
-        <div class="msg" id="job-msg"></div>
-      </div>
-      <div class="card">
-        <h2>Jobs</h2>
-        <div id="job-list"></div>
-      </div>
-    </section>
-  </main>
+  <main id="app"></main>
 
   <script>
     const state = { employees: [], jobs: [] };
@@ -127,79 +110,11 @@
         headers: body ? { "Content-Type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       });
-      const data = await res.json();
+      let data = null;
+      if (res.status !== 204) {
+        try { data = await res.json(); } catch (e) { data = null; }
+      }
       return { res, data };
-    }
-
-    function showTab(name) {
-      document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-      document.getElementById(`tab-${name}`).classList.add("active");
-      document.getElementById(`panel-${name}`).classList.add("active");
-    }
-
-    function jobName(jobId) {
-      const job = state.jobs.find((j) => j.id === Number(jobId));
-      return job ? `${job.name} (${job.department})` : `#${jobId}`;
-    }
-
-    async function loadJobs() {
-      const { data } = await api("/jobs");
-      state.jobs = Array.isArray(data) ? data : [];
-      const select = document.querySelector('#employee-form select[name="jobId"]');
-      select.innerHTML = "";
-      state.jobs.forEach((j) => {
-        const opt = document.createElement("option");
-        opt.value = j.id;
-        opt.textContent = `${j.name} (${j.department})`;
-        select.appendChild(opt);
-      });
-      renderJobs();
-    }
-
-    async function loadEmployees() {
-      const { data } = await api("/employees");
-      state.employees = Array.isArray(data) ? data : [];
-      renderEmployees();
-    }
-
-    function renderJobs() {
-      const el = document.getElementById("job-list");
-      if (!state.jobs.length) { el.innerHTML = '<div class="empty">No jobs yet.</div>'; return; }
-      const rows = state.jobs.map((j) => `
-        <tr>
-          <td>${j.name}</td>
-          <td>${j.description}</td>
-          <td>${j.department}</td>
-          <td class="actions">
-            <button class="edit" onclick="editJob(${j.id})">Edit</button>
-          </td>
-        </tr>`).join("");
-      el.innerHTML = `<table><thead><tr><th>Name</th><th>Description</th><th>Department</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-    }
-
-    function renderEmployees() {
-      const el = document.getElementById("employee-list");
-      if (!state.employees.length) { el.innerHTML = '<div class="empty">No employees yet.</div>'; return; }
-      const rows = state.employees.map((e) => `
-        <tr>
-          <td>${e.firstName}</td>
-          <td>${e.lastName}</td>
-          <td>${e.email}</td>
-          <td>${e.phoneNumber}</td>
-          <td>${jobName(e.jobId)}</td>
-          <td class="actions">
-            <button class="edit" onclick="editEmployee(${e.id})">Edit</button>
-          </td>
-        </tr>`).join("");
-      el.innerHTML = `<table><thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-    }
-
-    function setMsg(id, text, type = "success") {
-      const el = document.getElementById(id);
-      if (!text) { el.textContent = ""; return; }
-      el.textContent = text;
-      el.className = `msg ${type}`;
     }
 
     function extractErrors(data) {
@@ -208,85 +123,298 @@
       return "Something went wrong.";
     }
 
-    // ----- Employee submit / edit -----
-    let editingEmployeeId = null;
-    document.getElementById("employee-form").addEventListener("submit", async (e) => {
+    function jobById(id) {
+      return state.jobs.find((j) => j.id === Number(id));
+    }
+
+    function jobName(id) {
+      const j = jobById(id);
+      return j ? `${j.name} (${j.department})` : `#${id}`;
+    }
+
+    function statusBadge(status) {
+      return `<span class="badge ${status}">${status}</span>`;
+    }
+
+    function esc(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    // ---------- views ----------
+    function homeView() {
+      return `
+        <div class="tabs">
+          <a href="#/employees" class="active">Employees</a>
+          <a href="#/jobs">Jobs</a>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2>Employees</h2>
+            <a class="btn primary" href="#/employees/new">Create employee</a>
+          </div>
+          ${employeeTable(state.employees)}
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2>Jobs</h2>
+            <a class="btn primary" href="#/jobs/new">Create job</a>
+          </div>
+          ${jobTable(state.jobs)}
+        </div>`;
+    }
+
+    function employeesListView() {
+      return `
+        <a class="back" href="#/">← Home</a>
+        <div class="card">
+          <div class="card-header">
+            <h2>Employees</h2>
+            <a class="btn primary" href="#/employees/new">Create employee</a>
+          </div>
+          ${employeeTable(state.employees)}
+        </div>`;
+    }
+
+    function jobsListView() {
+      return `
+        <a class="back" href="#/">← Home</a>
+        <div class="card">
+          <div class="card-header">
+            <h2>Jobs</h2>
+            <a class="btn primary" href="#/jobs/new">Create job</a>
+          </div>
+          ${jobTable(state.jobs)}
+        </div>`;
+    }
+
+    function employeeTable(list) {
+      if (!list.length) return '<div class="empty">No employees yet.</div>';
+      return `<table>
+        <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th></tr></thead>
+        <tbody>
+          ${list.map((e) => `<tr class="clickable" data-href="#/employees/${e.id}">
+            <td>${esc(e.firstName)}</td>
+            <td>${esc(e.lastName)}</td>
+            <td>${esc(e.email)}</td>
+            <td>${esc(e.phoneNumber)}</td>
+            <td>${jobName(e.jobId)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>`;
+    }
+
+    function jobTable(list) {
+      if (!list.length) return '<div class="empty">No jobs yet.</div>';
+      return `<table>
+        <thead><tr><th>Name</th><th>Department</th><th>Status</th></tr></thead>
+        <tbody>
+          ${list.map((j) => `<tr class="clickable" data-href="#/jobs/${j.id}">
+            <td>${esc(j.name)}</td>
+            <td>${esc(j.department)}</td>
+            <td>${statusBadge(j.status)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>`;
+    }
+
+    function employeeDetailView(id) {
+      const e = state.employees.find((emp) => emp.id === Number(id));
+      if (!e) return '<div class="card"><div class="msg error">Employee not found.</div></div>';
+      return `
+        <a class="back" href="#/employees">← Employees</a>
+        <div class="card">
+          <div class="card-header">
+            <h2>${esc(e.firstName)} ${esc(e.lastName)}</h2>
+            <div class="actions">
+              <a class="btn primary" href="#/employees/${e.id}/edit">Edit</a>
+              <button class="danger" onclick="deleteEmployee(${e.id})">Delete</button>
+            </div>
+          </div>
+          <div class="detail-row"><span class="k">Email</span><span class="v">${esc(e.email)}</span></div>
+          <div class="detail-row"><span class="k">Phone</span><span class="v">${esc(e.phoneNumber)}</span></div>
+          <div class="detail-row"><span class="k">Job</span><span class="v">${jobName(e.jobId)}</span></div>
+        </div>`;
+    }
+
+    function jobDetailView(id) {
+      const j = state.jobs.find((job) => job.id === Number(id));
+      if (!j) return '<div class="card"><div class="msg error">Job not found.</div></div>';
+      return `
+        <a class="back" href="#/jobs">← Jobs</a>
+        <div class="card">
+          <div class="card-header">
+            <h2>${esc(j.name)} ${statusBadge(j.status)}</h2>
+            <div class="actions">
+              <a class="btn primary" href="#/jobs/${j.id}/edit">Edit</a>
+              <button class="danger" onclick="deleteJob(${j.id})">Delete</button>
+            </div>
+          </div>
+          <div class="detail-row"><span class="k">Department</span><span class="v">${esc(j.department)}</span></div>
+          <div class="detail-row"><span class="k">Description</span><span class="v">${esc(j.description)}</span></div>
+        </div>`;
+    }
+
+    function employeeFormView(id) {
+      const isEdit = id != null;
+      const e = isEdit ? state.employees.find((emp) => emp.id === Number(id)) : null;
+      if (isEdit && !e) return '<div class="card"><div class="msg error">Employee not found.</div></div>';
+      const jobOptions = state.jobs.map((j) =>
+        `<option value="${j.id}" ${e && e.jobId === j.id ? "selected" : ""}>${esc(j.name)} (${esc(j.department)})</option>`
+      ).join("");
+      return `
+        <a class="back" href="${isEdit ? `#/employees/${e.id}` : "#/employees"}">← Back</a>
+        <div class="card">
+          <h2>${isEdit ? "Edit employee" : "Create employee"}</h2>
+          <form id="entity-form">
+            ${field("firstName", "First name", e)}
+            ${field("lastName", "Last name", e)}
+            ${field("email", "Email", e, "email")}
+            ${field("phoneNumber", "Phone number", e)}
+            <label>Job (related)
+              <select name="jobId" required>
+                ${jobOptions}
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="primary" type="submit">${isEdit ? "Save changes" : "Create employee"}</button>
+              <a class="btn" href="${isEdit ? `#/employees/${e.id}` : "#/employees"}" style="border:1px solid #cbd2d9">Cancel</a>
+            </div>
+          </form>
+          <div class="msg" id="form-msg"></div>
+        </div>`;
+    }
+
+    function jobFormView(id) {
+      const isEdit = id != null;
+      const j = isEdit ? state.jobs.find((job) => job.id === Number(id)) : null;
+      if (isEdit && !j) return '<div class="card"><div class="msg error">Job not found.</div></div>';
+      return `
+        <a class="back" href="${isEdit ? `#/jobs/${j.id}` : "#/jobs"}">← Back</a>
+        <div class="card">
+          <h2>${isEdit ? "Edit job" : "Create job"}</h2>
+          <form id="entity-form">
+            ${field("name", "Name", j)}
+            ${field("description", "Description", j)}
+            ${field("department", "Department", j)}
+            <label>Status
+              <select name="status" required>
+                <option value="open" ${j && j.status === "open" ? "selected" : ""}>open</option>
+                <option value="closed" ${j && j.status === "closed" ? "selected" : ""}>closed</option>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="primary" type="submit">${isEdit ? "Save changes" : "Create job"}</button>
+              <a class="btn" href="${isEdit ? `#/jobs/${j.id}` : "#/jobs"}" style="border:1px solid #cbd2d9">Cancel</a>
+            </div>
+          </form>
+          <div class="msg" id="form-msg"></div>
+        </div>`;
+    }
+
+    function field(name, label, entity, type = "text") {
+      const val = entity ? entity[name] : "";
+      return `<label>${label} <input name="${name}" type="${type}" value="${esc(val)}" required /></label>`;
+    }
+
+    // ---------- router ----------
+    const routes = [
+      { pattern: /^#\/$/, view: homeView },
+      { pattern: /^#\/employees$/, view: employeesListView },
+      { pattern: /^#\/employees\/new$/, view: () => employeeFormView(null) },
+      { pattern: /^#\/employees\/(\d+)\/edit$/, view: (m) => employeeFormView(m[1]) },
+      { pattern: /^#\/employees\/(\d+)$/, view: (m) => employeeDetailView(m[1]) },
+      { pattern: /^#\/jobs$/, view: jobsListView },
+      { pattern: /^#\/jobs\/new$/, view: () => jobFormView(null) },
+      { pattern: /^#\/jobs\/(\d+)\/edit$/, view: (m) => jobFormView(m[1]) },
+      { pattern: /^#\/jobs\/(\d+)$/, view: (m) => jobDetailView(m[1]) },
+    ];
+
+    function render() {
+      const hash = location.hash || "#/";
+      const app = document.getElementById("app");
+      for (const route of routes) {
+        const match = hash.match(route.pattern);
+        if (match) {
+          app.innerHTML = route.view(match);
+          document.querySelectorAll("tr.clickable").forEach((tr) => {
+            tr.addEventListener("click", () => { location.hash = tr.dataset.href; });
+          });
+          const form = document.getElementById("entity-form");
+          if (form) form.addEventListener("submit", submitForm);
+          return;
+        }
+      }
+      app.innerHTML = '<div class="card"><div class="msg error">Page not found.</div></div>';
+    }
+
+    // ---------- actions ----------
+    function formType() {
+      return location.hash.includes("/jobs") ? "job" : "employee";
+    }
+    function formId() {
+      const m = location.hash.match(/(\d+)\/edit$/);
+      return m ? m[1] : null;
+    }
+
+    async function submitForm(e) {
       e.preventDefault();
       const form = e.target;
-      const body = {
+      const type = formType();
+      const id = formId();
+      const isEdit = id != null;
+
+      const body = type === "job" ? {
+        name: form.name.value.trim(),
+        description: form.description.value.trim(),
+        department: form.department.value.trim(),
+        status: form.status.value,
+      } : {
         firstName: form.firstName.value.trim(),
         lastName: form.lastName.value.trim(),
         email: form.email.value.trim(),
         phoneNumber: form.phoneNumber.value.trim(),
         jobId: Number(form.jobId.value),
       };
-      const isEdit = editingEmployeeId != null;
-      const path = isEdit ? `/employees/${editingEmployeeId}` : "/employees";
+
+      const path = isEdit ? `/${type}s/${id}` : `/${type}s`;
       const method = isEdit ? "PATCH" : "POST";
       const { res, data } = await api(path, method, body);
+      const msg = document.getElementById("form-msg");
       if (!res.ok) {
-        setMsg("employee-msg", extractErrors(data), "error");
+        msg.textContent = extractErrors(data);
+        msg.className = "msg error";
         return;
       }
-      setMsg("employee-msg", isEdit ? "Employee updated." : "Employee added.");
-      editingEmployeeId = null;
-      document.getElementById("employee-form").querySelector('button[type="submit"]').textContent = "Add employee";
-      form.reset();
-      await loadEmployees();
-    });
-
-    function editEmployee(id) {
-      const e = state.employees.find((emp) => emp.id === id);
-      if (!e) return;
-      editingEmployeeId = id;
-      const form = document.getElementById("employee-form");
-      form.firstName.value = e.firstName;
-      form.lastName.value = e.lastName;
-      form.email.value = e.email;
-      form.phoneNumber.value = e.phoneNumber;
-      form.jobId.value = e.jobId;
-      document.getElementById("employee-form").querySelector('button[type="submit"]').textContent = "Save changes";
-      setMsg("employee-msg", "");
+      await loadData();
+      location.hash = isEdit ? `#/${type}s/${id}` : (type === "job" ? "#/jobs" : "#/employees");
     }
 
-    // ----- Job submit / edit -----
-    let editingJobId = null;
-    document.getElementById("job-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const body = {
-        name: form.name.value.trim(),
-        description: form.description.value.trim(),
-        department: form.department.value.trim(),
-      };
-      const isEdit = editingJobId != null;
-      const path = isEdit ? `/jobs/${editingJobId}` : "/jobs";
-      const method = isEdit ? "PATCH" : "POST";
-      const { res, data } = await api(path, method, body);
-      if (!res.ok) {
-        setMsg("job-msg", extractErrors(data), "error");
-        return;
-      }
-      setMsg("job-msg", isEdit ? "Job updated." : "Job added.");
-      editingJobId = null;
-      document.getElementById("job-form").querySelector('button[type="submit"]').textContent = "Add job";
-      form.reset();
-      await Promise.all([loadJobs(), loadEmployees()]);
-    });
-
-    function editJob(id) {
-      const j = state.jobs.find((job) => job.id === id);
-      if (!j) return;
-      editingJobId = id;
-      const form = document.getElementById("job-form");
-      form.name.value = j.name;
-      form.description.value = j.description;
-      form.department.value = j.department;
-      document.getElementById("job-form").querySelector('button[type="submit"]').textContent = "Save changes";
-      setMsg("job-msg", "");
+    async function deleteEmployee(id) {
+      if (!confirm("Delete this employee?")) return;
+      const { res } = await api(`/employees/${id}`, "DELETE");
+      if (!res.ok) { alert("Delete failed"); return; }
+      await loadData();
+      location.hash = "#/employees";
     }
 
-    loadJobs().then(loadEmployees);
+    async function deleteJob(id) {
+      if (!confirm("Delete this job?")) return;
+      const { res } = await api(`/jobs/${id}`, "DELETE");
+      if (!res.ok) { alert("Delete failed"); return; }
+      await loadData();
+      location.hash = "#/jobs";
+    }
+
+    async function loadData() {
+      const [empRes, jobRes] = await Promise.all([api("/employees"), api("/jobs")]);
+      state.employees = Array.isArray(empRes.data) ? empRes.data : [];
+      state.jobs = Array.isArray(jobRes.data) ? jobRes.data : [];
+    }
+
+    window.addEventListener("hashchange", render);
+    loadData().then(render);
   </script>
 </body>
 </html>

@@ -3,32 +3,544 @@
     {
       "id": 1,
       "firstName": "Ignacio",
-      "lastName": "Soffiantini",
-      "email": "ignacio@example.com",
-      "phoneNumber": "+54 11 5555 0101",
+      "lastName": "Gomez",
+      "email": "ignacio.gomez@example.com",
+      "phoneNumber": "+54 11 5555 1000",
       "jobId": 1
     },
     {
       "id": 2,
       "firstName": "Maria",
-      "lastName": "Lopez",
-      "email": "maria@example.com",
-      "phoneNumber": "+54 11 5555 0102",
+      "lastName": "Rodriguez",
+      "email": "maria.rodriguez@example.com",
+      "phoneNumber": "+54 11 5555 1001",
       "jobId": 2
+    },
+    {
+      "id": 3,
+      "firstName": "Ana",
+      "lastName": "Fernandez",
+      "email": "ana.fernandez@example.com",
+      "phoneNumber": "+54 11 5555 1002",
+      "jobId": 3
+    },
+    {
+      "id": 4,
+      "firstName": "Carlos",
+      "lastName": "Lopez",
+      "email": "carlos.lopez@example.com",
+      "phoneNumber": "+54 11 5555 1003",
+      "jobId": 4
+    },
+    {
+      "id": 5,
+      "firstName": "Lucia",
+      "lastName": "Martinez",
+      "email": "lucia.martinez@example.com",
+      "phoneNumber": "+54 11 5555 1004",
+      "jobId": 5
+    },
+    {
+      "id": 6,
+      "firstName": "Jose",
+      "lastName": "Perez",
+      "email": "jose.perez@example.com",
+      "phoneNumber": "+54 11 5555 1005",
+      "jobId": 6
+    },
+    {
+      "id": 7,
+      "firstName": "Sofia",
+      "lastName": "Garcia",
+      "email": "sofia.garcia@example.com",
+      "phoneNumber": "+54 11 5555 1006",
+      "jobId": 7
+    },
+    {
+      "id": 8,
+      "firstName": "Pedro",
+      "lastName": "Sanchez",
+      "email": "pedro.sanchez@example.com",
+      "phoneNumber": "+54 11 5555 1007",
+      "jobId": 8
+    },
+    {
+      "id": 9,
+      "firstName": "Valentina",
+      "lastName": "Romero",
+      "email": "valentina.romero@example.com",
+      "phoneNumber": "+54 11 5555 1008",
+      "jobId": 9
+    },
+    {
+      "id": 10,
+      "firstName": "Diego",
+      "lastName": "Torres",
+      "email": "diego.torres@example.com",
+      "phoneNumber": "+54 11 5555 1009",
+      "jobId": 10
+    },
+    {
+      "id": 11,
+      "firstName": "Camila",
+      "lastName": "Diaz",
+      "email": "camila.diaz@example.com",
+      "phoneNumber": "+54 11 5555 1010",
+      "jobId": 11
+    },
+    {
+      "id": 12,
+      "firstName": "Martin",
+      "lastName": "Alvarez",
+      "email": "martin.alvarez@example.com",
+      "phoneNumber": "+54 11 5555 1011",
+      "jobId": 12
+    },
+    {
+      "id": 13,
+      "firstName": "Julia",
+      "lastName": "Ruiz",
+      "email": "julia.ruiz@example.com",
+      "phoneNumber": "+54 11 5555 1012",
+      "jobId": 13
+    },
+    {
+      "id": 14,
+      "firstName": "Luis",
+      "lastName": "Flores",
+      "email": "luis.flores@example.com",
+      "phoneNumber": "+54 11 5555 1013",
+      "jobId": 14
+    },
+    {
+      "id": 15,
+      "firstName": "Elena",
+      "lastName": "Ramirez",
+      "email": "elena.ramirez@example.com",
+      "phoneNumber": "+54 11 5555 1014",
+      "jobId": 15
+    },
+    {
+      "id": 16,
+      "firstName": "Andres",
+      "lastName": "Castro",
+      "email": "andres.castro@example.com",
+      "phoneNumber": "+54 11 5555 1015",
+      "jobId": 16
+    },
+    {
+      "id": 17,
+      "firstName": "Natalia",
+      "lastName": "Ortiz",
+      "email": "natalia.ortiz@example.com",
+      "phoneNumber": "+54 11 5555 1016",
+      "jobId": 17
+    },
+    {
+      "id": 18,
+      "firstName": "Gabriel",
+      "lastName": "Silva",
+      "email": "gabriel.silva@example.com",
+      "phoneNumber": "+54 11 5555 1017",
+      "jobId": 18
+    },
+    {
+      "id": 19,
+      "firstName": "Rocio",
+      "lastName": "Vargas",
+      "email": "rocio.vargas@example.com",
+      "phoneNumber": "+54 11 5555 1018",
+      "jobId": 19
+    },
+    {
+      "id": 20,
+      "firstName": "Fernando",
+      "lastName": "Mendoza",
+      "email": "fernando.mendoza@example.com",
+      "phoneNumber": "+54 11 5555 1019",
+      "jobId": 20
+    },
+    {
+      "id": 21,
+      "firstName": "Daniela",
+      "lastName": "Rojas",
+      "email": "daniela.rojas@example.com",
+      "phoneNumber": "+54 11 5555 1020",
+      "jobId": 1
+    },
+    {
+      "id": 22,
+      "firstName": "Hugo",
+      "lastName": "Cabrera",
+      "email": "hugo.cabrera@example.com",
+      "phoneNumber": "+54 11 5555 1021",
+      "jobId": 2
+    },
+    {
+      "id": 23,
+      "firstName": "Paula",
+      "lastName": "Campos",
+      "email": "paula.campos@example.com",
+      "phoneNumber": "+54 11 5555 1022",
+      "jobId": 3
+    },
+    {
+      "id": 24,
+      "firstName": "Santiago",
+      "lastName": "Cruz",
+      "email": "santiago.cruz@example.com",
+      "phoneNumber": "+54 11 5555 1023",
+      "jobId": 4
+    },
+    {
+      "id": 25,
+      "firstName": "Erika",
+      "lastName": "Morales",
+      "email": "erika.morales@example.com",
+      "phoneNumber": "+54 11 5555 1024",
+      "jobId": 5
+    },
+    {
+      "id": 26,
+      "firstName": "Marcos",
+      "lastName": "Molina",
+      "email": "marcos.molina@example.com",
+      "phoneNumber": "+54 11 5555 1025",
+      "jobId": 6
+    },
+    {
+      "id": 27,
+      "firstName": "Laura",
+      "lastName": "Herrera",
+      "email": "laura.herrera@example.com",
+      "phoneNumber": "+54 11 5555 1026",
+      "jobId": 7
+    },
+    {
+      "id": 28,
+      "firstName": "Ivan",
+      "lastName": "Aguilar",
+      "email": "ivan.aguilar@example.com",
+      "phoneNumber": "+54 11 5555 1027",
+      "jobId": 8
+    },
+    {
+      "id": 29,
+      "firstName": "Marta",
+      "lastName": "Medina",
+      "email": "marta.medina@example.com",
+      "phoneNumber": "+54 11 5555 1028",
+      "jobId": 9
+    },
+    {
+      "id": 30,
+      "firstName": "Ricardo",
+      "lastName": "Suarez",
+      "email": "ricardo.suarez@example.com",
+      "phoneNumber": "+54 11 5555 1029",
+      "jobId": 10
+    },
+    {
+      "id": 31,
+      "firstName": "Beatriz",
+      "lastName": "Rios",
+      "email": "beatriz.rios@example.com",
+      "phoneNumber": "+54 11 5555 1030",
+      "jobId": 11
+    },
+    {
+      "id": 32,
+      "firstName": "Alberto",
+      "lastName": "Vega",
+      "email": "alberto.vega@example.com",
+      "phoneNumber": "+54 11 5555 1031",
+      "jobId": 12
+    },
+    {
+      "id": 33,
+      "firstName": "Clara",
+      "lastName": "Guerrero",
+      "email": "clara.guerrero@example.com",
+      "phoneNumber": "+54 11 5555 1032",
+      "jobId": 13
+    },
+    {
+      "id": 34,
+      "firstName": "Emilio",
+      "lastName": "Ramos",
+      "email": "emilio.ramos@example.com",
+      "phoneNumber": "+54 11 5555 1033",
+      "jobId": 14
+    },
+    {
+      "id": 35,
+      "firstName": "Patricia",
+      "lastName": "Cortes",
+      "email": "patricia.cortes@example.com",
+      "phoneNumber": "+54 11 5555 1034",
+      "jobId": 15
+    },
+    {
+      "id": 36,
+      "firstName": "Rene",
+      "lastName": "Castillo",
+      "email": "rene.castillo@example.com",
+      "phoneNumber": "+54 11 5555 1035",
+      "jobId": 16
+    },
+    {
+      "id": 37,
+      "firstName": "Silvia",
+      "lastName": "Delgado",
+      "email": "silvia.delgado@example.com",
+      "phoneNumber": "+54 11 5555 1036",
+      "jobId": 17
+    },
+    {
+      "id": 38,
+      "firstName": "Tomas",
+      "lastName": "Pena",
+      "email": "tomas.pena@example.com",
+      "phoneNumber": "+54 11 5555 1037",
+      "jobId": 18
+    },
+    {
+      "id": 39,
+      "firstName": "Adriana",
+      "lastName": "Navarro",
+      "email": "adriana.navarro@example.com",
+      "phoneNumber": "+54 11 5555 1038",
+      "jobId": 19
+    },
+    {
+      "id": 40,
+      "firstName": "Julian",
+      "lastName": "Salazar",
+      "email": "julian.salazar@example.com",
+      "phoneNumber": "+54 11 5555 1039",
+      "jobId": 20
+    },
+    {
+      "id": 41,
+      "firstName": "Veronica",
+      "lastName": "Reyes",
+      "email": "veronica.reyes@example.com",
+      "phoneNumber": "+54 11 5555 1040",
+      "jobId": 1
+    },
+    {
+      "id": 42,
+      "firstName": "Oscar",
+      "lastName": "Guerrero",
+      "email": "oscar.guerrero@example.com",
+      "phoneNumber": "+54 11 5555 1041",
+      "jobId": 2
+    },
+    {
+      "id": 43,
+      "firstName": "Cecilia",
+      "lastName": "Paredes",
+      "email": "cecilia.paredes@example.com",
+      "phoneNumber": "+54 11 5555 1042",
+      "jobId": 3
+    },
+    {
+      "id": 44,
+      "firstName": "Fabian",
+      "lastName": "Fuentes",
+      "email": "fabian.fuentes@example.com",
+      "phoneNumber": "+54 11 5555 1043",
+      "jobId": 4
+    },
+    {
+      "id": 45,
+      "firstName": "Gloria",
+      "lastName": "Soto",
+      "email": "gloria.soto@example.com",
+      "phoneNumber": "+54 11 5555 1044",
+      "jobId": 5
+    },
+    {
+      "id": 46,
+      "firstName": "Nestor",
+      "lastName": "Bravo",
+      "email": "nestor.bravo@example.com",
+      "phoneNumber": "+54 11 5555 1045",
+      "jobId": 6
+    },
+    {
+      "id": 47,
+      "firstName": "Rosa",
+      "lastName": "Vera",
+      "email": "rosa.vera@example.com",
+      "phoneNumber": "+54 11 5555 1046",
+      "jobId": 7
+    },
+    {
+      "id": 48,
+      "firstName": "Ramon",
+      "lastName": "Pacheco",
+      "email": "ramon.pacheco@example.com",
+      "phoneNumber": "+54 11 5555 1047",
+      "jobId": 8
+    },
+    {
+      "id": 49,
+      "firstName": "Teresa",
+      "lastName": "Zambrano",
+      "email": "teresa.zambrano@example.com",
+      "phoneNumber": "+54 11 5555 1048",
+      "jobId": 9
+    },
+    {
+      "id": 50,
+      "firstName": "Victor",
+      "lastName": "Cardenas",
+      "email": "victor.cardenas@example.com",
+      "phoneNumber": "+54 11 5555 1049",
+      "jobId": 10
     }
   ],
   "jobs": [
     {
       "id": 1,
       "name": "Backend Developer",
-      "description": "Develops and maintains server-side systems and APIs.",
-      "department": "Engineering"
+      "description": "Currently open position for Backend Developer.",
+      "department": "Engineering",
+      "status": "open"
     },
     {
       "id": 2,
+      "name": "Frontend Developer",
+      "description": "Currently open position for Frontend Developer.",
+      "department": "Engineering",
+      "status": "open"
+    },
+    {
+      "id": 3,
+      "name": "Data Engineer",
+      "description": "Currently open position for Data Engineer.",
+      "department": "Engineering",
+      "status": "open"
+    },
+    {
+      "id": 4,
+      "name": "DevOps Engineer",
+      "description": "Currently open position for DevOps Engineer.",
+      "department": "Engineering",
+      "status": "open"
+    },
+    {
+      "id": 5,
+      "name": "Product Manager",
+      "description": "Currently open position for Product Manager.",
+      "department": "Product",
+      "status": "open"
+    },
+    {
+      "id": 6,
+      "name": "UX Designer",
+      "description": "Currently open position for UX Designer.",
+      "department": "Design",
+      "status": "open"
+    },
+    {
+      "id": 7,
+      "name": "QA Engineer",
+      "description": "Currently open position for QA Engineer.",
+      "department": "Engineering",
+      "status": "open"
+    },
+    {
+      "id": 8,
+      "name": "Security Engineer",
+      "description": "Currently open position for Security Engineer.",
+      "department": "Engineering",
+      "status": "open"
+    },
+    {
+      "id": 9,
+      "name": "Data Scientist",
+      "description": "Currently open position for Data Scientist.",
+      "department": "Data",
+      "status": "open"
+    },
+    {
+      "id": 10,
+      "name": "Scrum Master",
+      "description": "Currently open position for Scrum Master.",
+      "department": "Engineering",
+      "status": "open"
+    },
+    {
+      "id": 11,
+      "name": "Junior Recruiter",
+      "description": "Filled position for Junior Recruiter.",
+      "department": "People",
+      "status": "closed"
+    },
+    {
+      "id": 12,
       "name": "HR Analyst",
-      "description": "Supports HR operations and reporting.",
-      "department": "People"
+      "description": "Filled position for HR Analyst.",
+      "department": "People",
+      "status": "closed"
+    },
+    {
+      "id": 13,
+      "name": "Payroll Specialist",
+      "description": "Filled position for Payroll Specialist.",
+      "department": "People",
+      "status": "closed"
+    },
+    {
+      "id": 14,
+      "name": "Office Manager",
+      "description": "Filled position for Office Manager.",
+      "department": "Operations",
+      "status": "closed"
+    },
+    {
+      "id": 15,
+      "name": "Technical Writer",
+      "description": "Filled position for Technical Writer.",
+      "department": "Docs",
+      "status": "closed"
+    },
+    {
+      "id": 16,
+      "name": "Support Agent",
+      "description": "Filled position for Support Agent.",
+      "department": "Support",
+      "status": "closed"
+    },
+    {
+      "id": 17,
+      "name": "Business Analyst",
+      "description": "Filled position for Business Analyst.",
+      "department": "Product",
+      "status": "closed"
+    },
+    {
+      "id": 18,
+      "name": "QA Analyst",
+      "description": "Filled position for QA Analyst.",
+      "department": "Engineering",
+      "status": "closed"
+    },
+    {
+      "id": 19,
+      "name": "Accountant",
+      "description": "Filled position for Accountant.",
+      "department": "Finance",
+      "status": "closed"
+    },
+    {
+      "id": 20,
+      "name": "Receptionist",
+      "description": "Filled position for Receptionist.",
+      "department": "Operations",
+      "status": "closed"
     }
   ]
 }
