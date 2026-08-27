@@ -113,22 +113,13 @@ async function sendLog(log) {
   return res.status;
 }
 
-async function sendExecutionLogs(req, config) {
-  const {
-    recordTypeId,
-    infoSummary,
-    infoDetails,
-    successSummary = "Flow finished successfully.",
-    successDetails = "Execution was successful.",
-    fallbackRecordId = null,
-  } = config;
-
+function resolveLogContext(req, fallbackRecordId) {
   const trackingCode = resolveTrackingCode(req);
   if (!trackingCode) {
     console.warn(
       `[junction] No tracking code resolved; skipping event logs. diagnostics=${JSON.stringify(trackingDiagnostics(req))}`
     );
-    return { trackingCode: null, recordId: null, sent: 0 };
+    return { trackingCode: null };
   }
 
   let recordId = resolveRecordId(req);
@@ -141,40 +132,57 @@ async function sendExecutionLogs(req, config) {
     console.log(`[junction] Using recordId=${JSON.stringify(recordId)} from request payload`);
   }
 
+  return { trackingCode, recordId };
+}
+
+function makeLog(ctx, recordTypeId, summary, details, status) {
+  return {
+    trackingCode: ctx.trackingCode,
+    recordTypeId,
+    recordId: ctx.recordId,
+    summary,
+    details,
+    status,
+    dateTime: utcDateTime(),
+  };
+}
+
+async function sendLogSafe(log) {
+  try {
+    const status = await sendLog(log);
+    console.log(
+      `[junction] Logged event "${log.summary}" (HTTP ${status}) with trackingCode=${log.trackingCode} recordId=${JSON.stringify(log.recordId)}`
+    );
+    return true;
+  } catch (err) {
+    console.error(`[junction] Failed to send event "${log.summary}": ${err.message}`);
+    return false;
+  }
+}
+
+async function sendExecutionLogs(req, config) {
+  const {
+    recordTypeId,
+    infoSummary,
+    infoDetails,
+    successSummary = "Flow finished successfully.",
+    successDetails = "Execution was successful.",
+    fallbackRecordId = null,
+  } = config;
+
+  const ctx = resolveLogContext(req, fallbackRecordId);
+  if (!ctx.trackingCode) return { trackingCode: null, recordId: null, sent: 0 };
+
   const logs = [
-    {
-      trackingCode,
-      recordTypeId,
-      recordId,
-      summary: infoSummary,
-      details: infoDetails,
-      status: "INFO",
-      dateTime: utcDateTime(),
-    },
-    {
-      trackingCode,
-      recordTypeId,
-      recordId,
-      summary: successSummary,
-      details: successDetails,
-      status: "SUCCESS",
-      dateTime: utcDateTime(),
-    },
+    makeLog(ctx, recordTypeId, infoSummary, infoDetails, "INFO"),
+    makeLog(ctx, recordTypeId, successSummary, successDetails, "SUCCESS"),
   ];
 
   let sent = 0;
   for (const log of logs) {
-    try {
-      const status = await sendLog(log);
-      sent += 1;
-      console.log(
-        `[junction] Logged event "${log.summary}" (HTTP ${status}) with trackingCode=${trackingCode} recordId=${JSON.stringify(recordId)}`
-      );
-    } catch (err) {
-      console.error(`[junction] Failed to send event "${log.summary}": ${err.message}`);
-    }
+    if (await sendLogSafe(log)) sent += 1;
   }
-  return { trackingCode, recordId, sent };
+  return { trackingCode: ctx.trackingCode, recordId: ctx.recordId, sent };
 }
 
 async function sendErrorLog(req, config) {
@@ -212,6 +220,9 @@ module.exports = {
   resolveRecordId,
   utcDateTime,
   sendLog,
+  sendLogSafe,
   sendExecutionLogs,
   sendErrorLog,
+  resolveLogContext,
+  makeLog,
 };

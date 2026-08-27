@@ -115,3 +115,20 @@ Crea (o actualiza) el empleado en el HRIS y registra la ejecución del flow en l
 
 El `dateTime` se envía con formato `yyyy-MM-dd'T'HH:mm:ss.SSS+0000` (igual que `${now():format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")}` en NiFi). La respuesta es siempre `{ "asyncResponse": { "successful": true } }`, incluso si el email ya existía (en ese caso los logs lo explican sin enviar un `ERROR`).
 
+**Sincronización con form de Avature (`hrisSync`, reusable en `integrations/hrisSync.js`):** después de crear/actualizar el empleado, se adjunta/actualiza el form `form_838` que representa la sincronización para la persona (id de Avature = `recordId` de la request):
+
+1. `GET {base}/rest/hrisSync/people/{personId}/form_838` — si responde `404`, no existe el form.
+2. Si no existe → `POST {base}/rest/hrisSync/people/{personId}/form_838` (crea).
+3. Si existe → se obtiene el `formId` de la respuesta y `PATCH {base}/rest/hrisSync/people/{personId}/form_838/{formId}` (actualiza).
+
+El body de POST y PATCH es:
+
+```json
+{ "personId": <id de Avature>, "HRIS External ID": <id del registro en el HRIS>, "Last Synced": "yyyy-MM-dd'T'HH:mm:ss.SSS+0000" }
+```
+
+Las requests se autentican con el header `X-Avature-REST-API-Key`. **Variables de entorno (en Render → Environment, nunca en el código):**
+- `AVATURE_REST_API_KEY` — el valor de la API key (producción).
+- `AVATURE_REST_BASE_URL` — base de la instancia (por defecto `https://junctiontraining.avature.net`).
+- `HRIS_SYNC_FORM_ID` — id del form (por defecto `838`).
+

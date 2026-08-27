@@ -1,6 +1,7 @@
 const express = require("express");
 const { readData, writeData, nextId } = require("../store");
-const { resolveTrackingCode, resolveRecordId, sendExecutionLogs, sendErrorLog } = require("./junction");
+const { resolveTrackingCode, resolveRecordId, sendErrorLog, utcDateTime, resolveLogContext, makeLog, sendLogSafe } = require("./junction");
+const { attachForm } = require("./hrisSync");
 
 const router = express.Router();
 
@@ -77,17 +78,53 @@ router.post("/flow_create_employee", async (req, res) => {
       : `An employee with email ${employee.email} already existed in the HRIS. The corresponding record was updated with the information received. You can view the record at ${url}`;
 
     const trackingCode = resolveTrackingCode(req);
-    const payloadRecordId = resolveRecordId(req);
+    const personId = resolveRecordId(req);
     console.log(
-      `[flow_create_employee] trackingCode="${trackingCode}" recordIdFromPayload=${JSON.stringify(payloadRecordId)} body=${JSON.stringify(req.body || {})}`
+      `[flow_create_employee] trackingCode="${trackingCode}" recordIdFromPayload=${JSON.stringify(personId)} body=${JSON.stringify(req.body || {})}`
     );
 
-    void sendExecutionLogs(req, {
-      recordTypeId: RECORD_TYPE_EMPLOYEE,
-      infoSummary,
-      infoDetails,
-      fallbackRecordId: record.id,
-    });
+    void (async () => {
+      const ctx = resolveLogContext(req, record.id);
+      if (!ctx.trackingCode) return;
+
+      await sendLogSafe(makeLog(ctx, RECORD_TYPE_EMPLOYEE, infoSummary, infoDetails, "INFO"));
+
+      if (personId === null || personId === "") {
+        console.warn(
+          "[hrisSync] No Avature person id (recordId) in request; skipping form sync. Full body: " +
+            JSON.stringify(req.body || {})
+        );
+        await sendLogSafe(makeLog(ctx, RECORD_TYPE_EMPLOYEE, "Flow finished successfully.", "Execution was successful.", "SUCCESS"));
+        return;
+      }
+
+      try {
+        const result = await attachForm(personId, record.id, utcDateTime());
+        if (result.action === "skipped") {
+          console.warn(`[hrisSync] Form sync skipped: ${result.reason}`);
+          await sendLogSafe(
+            makeLog(ctx, RECORD_TYPE_EMPLOYEE, "Flow failed.", `Execution failed: form sync skipped (${result.reason}).`, "ERROR")
+          );
+          return;
+        }
+        const actionText = result.action === "created" ? "created" : "updated";
+        await sendLogSafe(
+          makeLog(
+            ctx,
+            RECORD_TYPE_EMPLOYEE,
+            "Person record synced into Avature.",
+            `The person record has been synced into Avature: the sync form attached to the person was ${actionText} successfully.`,
+            "INFO"
+          )
+        );
+        await sendLogSafe(makeLog(ctx, RECORD_TYPE_EMPLOYEE, "Flow finished successfully.", "Execution was successful.", "SUCCESS"));
+      } catch (err) {
+        console.error(`[hrisSync] Failed to attach form: ${err.message}`);
+        await sendLogSafe(
+          makeLog(ctx, RECORD_TYPE_EMPLOYEE, "Flow failed.", `Execution failed: ${err.message}`, "ERROR")
+        );
+      }
+    })();
   } catch (err) {
     console.error("Flow create employee error:", err);
     void sendErrorLog(req, { recordTypeId: RECORD_TYPE_EMPLOYEE, message: err.message || String(err) });
