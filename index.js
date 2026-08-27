@@ -157,31 +157,51 @@ function decodeCursor(cursor) {
   }
 }
 
-function paginateCursor(list, req) {
+function paginateCursor(list, req, sortFn) {
   const pageSizeRaw = Number(req.query.pageSize);
   const pageSize = Number.isInteger(pageSizeRaw) && pageSizeRaw > 0
     ? Math.min(pageSizeRaw, 100)
     : 10;
 
-  const sorted = [...list].sort((a, b) => a.id - b.id);
+  const sorted = sortFn ? [...list].sort(sortFn) : [...list].sort((a, b) => a.id - b.id);
 
   let startIndex = 0;
   if (req.query.cursor) {
     const cursorId = decodeCursor(req.query.cursor);
     if (cursorId !== null) {
-      startIndex = sorted.findIndex((item) => item.id > cursorId);
-      if (startIndex === -1) startIndex = sorted.length;
+      if (sortFn) {
+        startIndex = Number.isInteger(cursorId) && cursorId >= 0 ? cursorId : sorted.length;
+      } else {
+        const i = sorted.findIndex((item) => item.id > cursorId);
+        startIndex = i === -1 ? sorted.length : i;
+      }
     }
   }
 
   const page = sorted.slice(startIndex, startIndex + pageSize);
-  const last = page[page.length - 1];
   const hasMore = startIndex + page.length < sorted.length;
 
   return {
     data: page,
     pageSize,
-    next: hasMore ? { cursor: encodeCursor(last.id) } : null,
+    next: hasMore
+      ? { cursor: encodeCursor(sortFn ? startIndex + page.length : page[page.length - 1].id) }
+      : null,
+  };
+}
+
+function sortByHireDate(order) {
+  const dir = String(order || "asc").toLowerCase() === "desc" ? -1 : 1;
+  return (a, b) => {
+    const da = Date.parse(a.hireDate || "");
+    const db = Date.parse(b.hireDate || "");
+    const fa = Number.isFinite(da);
+    const fb = Number.isFinite(db);
+    if (!fa && !fb) return a.id - b.id;
+    if (!fa) return 1;
+    if (!fb) return -1;
+    if (da !== db) return (da - db) * dir;
+    return a.id - b.id;
   };
 }
 
@@ -214,7 +234,22 @@ app.get("/employees", (req, res) => {
     }
     list = list.filter((e) => e.jobId === jobId);
   }
-  res.json(paginateCursor(list, req));
+  if (req.query.firstName !== undefined) {
+    const name = String(req.query.firstName).trim().toLowerCase();
+    if (name) {
+      list = list.filter((e) =>
+        String(e.firstName || "").toLowerCase().includes(name)
+      );
+    }
+  }
+  let sortFn = null;
+  if (req.query.sort !== undefined) {
+    if (String(req.query.sort) !== "hireDate") {
+      return res.status(400).json({ errors: ["sort must be 'hireDate'"] });
+    }
+    sortFn = sortByHireDate(req.query.order);
+  }
+  res.json(paginateCursor(list, req, sortFn));
 });
 
 app.get("/employees/:id", (req, res) => {

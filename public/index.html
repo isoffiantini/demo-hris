@@ -133,6 +133,7 @@
     .filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
     .filter-bar label { flex-direction: row; align-items: center; gap: 8px; }
     .filter-bar select { min-width: 220px; }
+    .filter-bar input { width: 200px; }
 
     /* ---------- welcome ---------- */
     .welcome { background: linear-gradient(135deg, #16324f, #1f456b); color: #fff; }
@@ -196,11 +197,11 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const PAGE_SIZE = 10;
+    const PAGE_SIZE = 50;
     const CURRENT_USER = "Ignacio";
     const state = { employees: [], jobs: [], departments: [], locations: [] };
     const pages = {
-      employees: { list: [], pageCursor: null, next: null, prevStack: [], jobFilter: null },
+      employees: { list: [], pageCursor: null, next: null, prevStack: [], jobFilter: null, nameFilter: null, sortFilter: null },
       jobs: { list: [], pageCursor: null, next: null, prevStack: [] },
       departments: { list: [], pageCursor: null, next: null, prevStack: [] },
       locations: { list: [], pageCursor: null, next: null, prevStack: [] },
@@ -267,6 +268,12 @@
       const p = pages[type];
       let url = `/${type}?pageSize=${PAGE_SIZE}`;
       if (p.jobFilter) url += `&jobId=${p.jobFilter}`;
+      if (p.nameFilter) url += `&firstName=${encodeURIComponent(p.nameFilter)}`;
+      if (p.sortFilter) {
+        const [sort, order] = p.sortFilter.split("_");
+        url += `&sort=${sort}`;
+        if (order) url += `&order=${order}`;
+      }
       if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
       const { data } = await api(url);
       return data;
@@ -352,6 +359,16 @@
                 ${state.jobs.map((j) => `<option value="${j.id}" ${pages.employees.jobFilter === j.id ? "selected" : ""}>${esc(j.name)}</option>`).join("")}
               </select>
             </label>
+            <label>Filter by first name
+              <input id="name-filter" type="text" value="${esc(pages.employees.nameFilter || "")}" placeholder="e.g. Ana" oninput="debouncedNameFilter()" />
+            </label>
+            <label>Sort by hire date
+              <select id="sort-filter" onchange="applySortFilter()">
+                <option value="">Default</option>
+                <option value="hireDate_asc" ${pages.employees.sortFilter === "hireDate_asc" ? "selected" : ""}>Hire date ↑ (oldest first)</option>
+                <option value="hireDate_desc" ${pages.employees.sortFilter === "hireDate_desc" ? "selected" : ""}>Hire date ↓ (newest first)</option>
+              </select>
+            </label>
           </div>
           ${employeeTable(pages.employees.list)}
           ${paginationControls("employees")}
@@ -412,7 +429,7 @@
     function employeeTable(list) {
       if (!list.length) return '<div class="empty">No people yet.</div>';
       return `<table>
-        <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th><th>Status</th></tr></thead>
+        <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th><th>Status</th><th>Hire date</th></tr></thead>
         <tbody>
           ${list.map((e) => `<tr class="clickable" data-href="#/people/${e.id}">
             <td>${esc(e.firstName)}</td>
@@ -421,6 +438,7 @@
             <td>${esc(e.phoneNumber)}</td>
             <td>${jobName(e.jobId)}</td>
             <td>${employmentStatusBadge(e.employmentStatus)}</td>
+            <td>${esc(e.hireDate)}</td>
           </tr>`).join("")}
         </tbody>
       </table>`;
@@ -826,6 +844,31 @@
       const val = select.value ? Number(select.value) : null;
       const p = pages.employees;
       p.jobFilter = val;
+      p.prevStack = [];
+      await loadPage("employees", null);
+      render();
+    }
+
+    let nameFilterTimer = null;
+    function debouncedNameFilter() {
+      clearTimeout(nameFilterTimer);
+      nameFilterTimer = setTimeout(applyNameFilter, 300);
+    }
+
+    async function applyNameFilter() {
+      const input = document.getElementById("name-filter");
+      const val = input ? input.value.trim() : "";
+      const p = pages.employees;
+      p.nameFilter = val || null;
+      p.prevStack = [];
+      await loadPage("employees", null);
+      render();
+    }
+
+    async function applySortFilter() {
+      const select = document.getElementById("sort-filter");
+      const p = pages.employees;
+      p.sortFilter = select.value || null;
       p.prevStack = [];
       await loadPage("employees", null);
       render();

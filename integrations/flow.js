@@ -1,21 +1,10 @@
 const express = require("express");
 const { readData, writeData, nextId } = require("../store");
+const { resolveTrackingCode, resolveRecordId, sendExecutionLogs, sendErrorLog } = require("./junction");
 
 const router = express.Router();
 
-const JUNCTION_EVENTS_URL =
-  process.env.JUNCTION_EVENTS_URL ||
-  "https://junctiontraining.avature.net/junction/events/v2/-MSw1QmrDUfibjnwiEOdXY6xo2ODDQqMOtc7WcXW/";
 const RECORD_TYPE_EMPLOYEE = 2;
-
-const TRACKING_CODE_HEADERS = [
-  "avature-tracking-code",
-  "tracking-code",
-  "x-tracking-code",
-  "x-avature-tracking-code",
-];
-
-const RECORD_ID_HEADERS = ["avature-record-id", "x-avature-record-id"];
 
 function respondAsync(res) {
   res.json({ asyncResponse: { successful: true } });
@@ -65,183 +54,8 @@ function upsertEmployee(employee) {
   return { record, created: true };
 }
 
-function utcDateTime() {
-  return new Date().toISOString().replace(/Z$/, "+0000");
-}
-
-function getHeaderValue(req, names) {
-  for (const name of names) {
-    const value = req.get(name);
-    if (value !== undefined && value !== null && String(value).trim() !== "") {
-      return String(value).trim();
-    }
-  }
-  return "";
-}
-
-function resolveTrackingCode(req) {
-  const query = req.query || {};
-  if (query.externalRef !== undefined && String(query.externalRef).trim() !== "") {
-    return String(query.externalRef).trim();
-  }
-  const fromHeader = getHeaderValue(req, TRACKING_CODE_HEADERS);
-  if (fromHeader) return fromHeader;
-  const body = req.body || {};
-  const props = body.properties || {};
-  const candidates = [
-    query.trackingCode,
-    props.externalRef,
-    props.trackingCode,
-    props.tracking_code,
-    body.externalRef,
-    body.trackingCode,
-  ];
-  for (const candidate of candidates) {
-    if (candidate !== undefined && candidate !== null && String(candidate).trim() !== "") {
-      return String(candidate).trim();
-    }
-  }
-  return "";
-}
-
-function trackingDiagnostics(req) {
-  const relevantHeaders = Object.entries(req.headers || {})
-    .filter(([name]) => /track|external|ref|avature/i.test(name))
-    .map(([name, value]) => `${name}=${value}`);
-  return {
-    query: req.query || {},
-    relevantHeaders,
-    bodyKeys: Object.keys(req.body || {}),
-    propertiesKeys: Object.keys(((req.body || {}).properties) || {}),
-  };
-}
-
-function idFromValue(value) {
-  if (value === undefined || value === null) return null;
-  if (typeof value === "object") {
-    if (value.id !== undefined && value.id !== null) return idFromValue(value.id);
-    return null;
-  }
-  if (value === "") return null;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : value;
-}
-
-function resolveRecordId(req) {
-  const body = req.body || {};
-  const props = body.properties || {};
-  const candidates = [
-    body.recordId,
-    body.record_id,
-    body.id,
-    props.recordId,
-    props.record_id,
-    props.id,
-    props.personId,
-    props.candidateId,
-    props.person_id,
-    props.record,
-    body.record,
-    getHeaderValue(req, RECORD_ID_HEADERS),
-  ];
-  for (const candidate of candidates) {
-    const id = idFromValue(candidate);
-    if (id !== null && id !== "") return id;
-  }
-  return null;
-}
-
-async function sendEventLogs(log) {
-  const payload = JSON.stringify({ logs: [log] });
-  console.log(`[junction] POST ${JUNCTION_EVENTS_URL} body=${payload.slice(0, 2000)}`);
-  const res = await fetch(JUNCTION_EVENTS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: payload,
-  });
-  console.log(`[junction] response status=${res.status}`);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Junction events API responded ${res.status}: ${text}`);
-  }
-  return res.status;
-}
-
 function employeeUrl(req, id) {
   return `${req.protocol}://${req.get("host")}/#/people/${id}`;
-}
-
-function buildEmployeeLogs(req, employee, upserted) {
-  const { record, created } = upserted;
-  const trackingCode = resolveTrackingCode(req);
-  const resolvedRecordId = resolveRecordId(req);
-  const recordId = resolvedRecordId === null || resolvedRecordId === "" ? record.id : resolvedRecordId;
-  if (resolvedRecordId === null || resolvedRecordId === "") {
-    console.warn(
-      `[flow_create_employee] No recordId found in request payload; falling back to HRIS record id ${record.id}. Full body: ${JSON.stringify(req.body || {})}`
-    );
-  } else {
-    console.log(`[flow_create_employee] Using recordId=${JSON.stringify(recordId)} from request payload`);
-  }
-  const url = employeeUrl(req, record.id);
-
-  const first = created
-    ? {
-        summary: "Employee successfully created in the HRIS.",
-        details: `Employee successfully created in the HRIS. You can view the record at ${url}`,
-      }
-    : {
-        summary: "Employee email already exists - record updated.",
-        details: `An employee with email ${employee.email} already existed in the HRIS. The corresponding record was updated with the information received. You can view the record at ${url}`,
-      };
-
-  return {
-    trackingCode,
-    logs: [
-      {
-        trackingCode,
-        recordTypeId: RECORD_TYPE_EMPLOYEE,
-        recordId,
-        summary: first.summary,
-        details: first.details,
-        status: "INFO",
-        dateTime: utcDateTime(),
-      },
-      {
-        trackingCode,
-        recordTypeId: RECORD_TYPE_EMPLOYEE,
-        recordId,
-        summary: "Flow finished successfully.",
-        details: "Execution was successful.",
-        status: "SUCCESS",
-        dateTime: utcDateTime(),
-      },
-    ],
-  };
-}
-
-async function postLogsAsync(req, employee, upserted) {
-  const { trackingCode, logs } = buildEmployeeLogs(req, employee, upserted);
-  if (!trackingCode) {
-    console.warn(
-      `[flow_create_employee] No tracking code resolved; skipping junction event logs. diagnostics=${JSON.stringify(trackingDiagnostics(req))}`
-    );
-    return;
-  }
-  try {
-    for (const log of logs) {
-      try {
-        const status = await sendEventLogs(log);
-        console.log(
-          `[flow_create_employee] Logged event "${log.summary}" to junction (HTTP ${status}) with trackingCode=${trackingCode}`
-        );
-      } catch (err) {
-        console.error(`[flow_create_employee] Failed to send junction event log "${log.summary}": ${err.message}`);
-      }
-    }
-  } catch (err) {
-    console.error(`[flow_create_employee] Failed to send junction event logs: ${err.message}`);
-  }
 }
 
 router.get("/flow_create_employee", (req, res) => {
@@ -252,47 +66,31 @@ router.get("/flow_create_employee", (req, res) => {
 router.post("/flow_create_employee", async (req, res) => {
   try {
     const employee = toEmployeePayload(req.body);
-    const upserted = upsertEmployee(employee);
+    const { record, created } = upsertEmployee(employee);
+    const url = employeeUrl(req, record.id);
+
+    const infoSummary = created
+      ? "Employee successfully created in the HRIS."
+      : "Employee email already exists - record updated.";
+    const infoDetails = created
+      ? `Employee successfully created in the HRIS. You can view the record at ${url}`
+      : `An employee with email ${employee.email} already existed in the HRIS. The corresponding record was updated with the information received. You can view the record at ${url}`;
 
     const trackingCode = resolveTrackingCode(req);
-    const resolvedRecordId = resolveRecordId(req);
-    const payloadRecordId = resolvedRecordId === null ? null : resolvedRecordId;
+    const payloadRecordId = resolveRecordId(req);
     console.log(
       `[flow_create_employee] trackingCode="${trackingCode}" recordIdFromPayload=${JSON.stringify(payloadRecordId)} body=${JSON.stringify(req.body || {})}`
     );
-    if (trackingCode) {
-      void postLogsAsync(req, employee, upserted);
-    } else {
-      console.warn("[flow_create_employee] No tracking code resolved; skipping junction event logs.");
-    }
+
+    void sendExecutionLogs(req, {
+      recordTypeId: RECORD_TYPE_EMPLOYEE,
+      infoSummary,
+      infoDetails,
+      fallbackRecordId: record.id,
+    });
   } catch (err) {
     console.error("Flow create employee error:", err);
-    const trackingCode = resolveTrackingCode(req);
-    if (trackingCode) {
-      const resolvedRecordId = resolveRecordId(req);
-      const recordId =
-        resolvedRecordId === null || resolvedRecordId === ""
-          ? null
-          : typeof resolvedRecordId === "number"
-            ? resolvedRecordId
-            : resolvedRecordId;
-      const log = {
-        trackingCode,
-        recordTypeId: RECORD_TYPE_EMPLOYEE,
-        recordId,
-        summary: "Flow failed.",
-        details: `Execution failed: ${err.message || String(err)}`,
-        status: "ERROR",
-        dateTime: utcDateTime(),
-      };
-      void (async () => {
-        try {
-          await sendEventLogs(log);
-        } catch (logErr) {
-          console.error("Failed to send junction error log:", logErr.message);
-        }
-      })();
-    }
+    void sendErrorLog(req, { recordTypeId: RECORD_TYPE_EMPLOYEE, message: err.message || String(err) });
   }
 
   respondAsync(res);

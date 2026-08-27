@@ -52,7 +52,7 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 - `?pageSize=N` — tamaño de página (default `10`, máximo `100`).
 - `?cursor=...` — cursor opaco para la página siguiente (tomado de `next.cursor`).
 
-`GET /employees` adicionalmente acepta `?jobId=N` para filtrar por job en el servidor.
+`GET /employees` adicionalmente acepta `?jobId=N`, `?firstName=<texto>` (case-insensitive, substring) y `?sort=hireDate` con `?order=asc|desc` (por defecto `asc`) para filtrar/ordenar en el servidor; pueden combinarse.
 
 Respuesta:
 
