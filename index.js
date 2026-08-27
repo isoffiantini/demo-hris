@@ -8,7 +8,28 @@ const PORT = process.env.PORT || 3000;
 
 console.log(`[hris] starting - PORT=${PORT} JUNCTION_EVENTS_URL=${process.env.JUNCTION_EVENTS_URL || "https://junctiontraining.avature.net/junction/events/v2/-MSw1QmrDUfibjnwiEOdXY6xo2ODDQqMOtc7WcXW/ (default)"}`);
 
-app.use(express.json());
+app.use(
+  express.json({
+    verify(req, res, buf) {
+      req.rawBody = buf.toString("utf8");
+    },
+  })
+);
+
+app.use((req, res, next) => {
+  if ((req.headers["content-type"] || "").toLowerCase().includes("application/json")) {
+    return next();
+  }
+  let raw = "";
+  req.on("data", (chunk) => {
+    raw += chunk;
+    if (raw.length > 100000) req.destroy();
+  });
+  req.on("end", () => {
+    req.rawBody = raw;
+    next();
+  });
+});
 
 app.use((req, res, next) => {
   const started = Date.now();
@@ -18,10 +39,15 @@ app.use((req, res, next) => {
       `${res.statusCode}`,
       `${Date.now() - started}ms`,
       `ip=${req.ip}`,
+      `ct=${req.headers["content-type"] || "(none)"}`,
     ];
     if (req.method === "POST") {
-      const body = req.body && Object.keys(req.body).length ? JSON.stringify(req.body) : "{}";
-      pieces.push(`body=${body.slice(0, 2000)}`);
+      const parsed = req.body && Object.keys(req.body).length;
+      if (parsed) {
+        pieces.push(`body=${JSON.stringify(req.body).slice(0, 2000)}`);
+      } else {
+        pieces.push(`rawBody=${(req.rawBody || "").slice(0, 2000)}`);
+      }
     }
     if (Object.keys(req.query || {}).length) pieces.push(`query=${JSON.stringify(req.query)}`);
     console.log(pieces.join(" "));

@@ -15,7 +15,11 @@ function apiKeyHeaders() {
 }
 
 function coreFormUrl(avatureId) {
-  return `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/data/records_2/${avatureId}/forms_hris_employee_sync?use_canonical_names=1`;
+  return `${coreFormBaseUrl(avatureId)}?use_canonical_names=1`;
+}
+
+function coreFormBaseUrl(avatureId) {
+  return `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/data/records_2/${avatureId}/forms_hris_employee_sync`;
 }
 
 function coreRecordUrl(avatureId) {
@@ -82,11 +86,10 @@ async function getEmployeeSyncForm(avatureId) {
     console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; cannot check sync form.");
     throw new Error("AVATURE_REST_API_KEY is not set");
   }
-  const url = coreFormUrl(avatureId);
-  console.log(`[hrisSync] GET ${url}`);
+const url = coreFormUrl(avatureId);
   const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
+  console.log(`[hrisSync] sync form response preview: ${text.slice(0, 600)}`);
   if (!res.ok) {
-    console.error(`[hrisSync] GET status=${res.status}`);
     throw new Error(`avature sync form GET failed: ${res.status} ${text.slice(0, 300)}`);
   }
   const parsed = parseJson(text);
@@ -106,11 +109,10 @@ async function getAvatureRecordNames(avatureId) {
     console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; cannot fetch record names.");
     throw new Error("AVATURE_REST_API_KEY is not set");
   }
-  const url = coreRecordUrl(avatureId);
-  console.log(`[hrisSync] GET ${url}`);
+const url = coreRecordUrl(avatureId);
   const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
+  console.log(`[hrisSync] record response preview: ${text.slice(0, 600)}`);
   if (!res.ok) {
-    console.error(`[hrisSync] GET status=${res.status}`);
     throw new Error(`avature record GET failed: ${res.status} ${text.slice(0, 300)}`);
   }
   const record = firstRecord(parseJson(text));
@@ -142,8 +144,11 @@ function formBody(personId, fields) {
 }
 
 async function requestJson(url, options) {
+  const method = (options && options.method) || "GET";
+  console.log(`[hrisSync] ${method} ${url}`);
   const res = await fetch(url, options);
   const text = await res.text().catch(() => "");
+  console.log(`[hrisSync] ${method} ${url} -> status=${res.status} bytes=${text.length}`);
   return { res, text };
 }
 
@@ -229,12 +234,13 @@ function parseJson(text) {
   }
 }
 
-async function patchFormAt(personId, formId, fields) {
+async function patchFormAt(personId, formId, fields, baseUrlOverride) {
   if (!AVATURE_REST_API_KEY) {
     console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; skipping form patch.");
     return { action: "skipped", reason: "missing api key" };
   }
-  const patchUrl = `${formUrl(personId)}/${formId}`;
+  const baseUrl = baseUrlOverride || formUrl(personId);
+  const patchUrl = `${baseUrl}/${formId}`;
   const body = formBody(personId, fields);
   console.log(`[hrisSync] PATCH ${patchUrl} (personId=${personId} hrisId=${fields.hrisExternalId})`);
   const patch = await requestJson(patchUrl, {
@@ -255,6 +261,7 @@ module.exports = {
   HRIS_SYNC_FORM_ID,
   attachForm,
   patchFormAt,
+  coreFormBaseUrl,
   getEmployeeSyncForm,
   getAvatureRecordNames,
 };
