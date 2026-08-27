@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo HRIS</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f5f7;
+      color: #1f2933;
+    }
+    header {
+      background: #16324f;
+      color: #fff;
+      padding: 20px 32px;
+    }
+    header h1 { font-size: 22px; font-weight: 600; }
+    main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tabs button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px 8px 0 0;
+      background: #d7dde3;
+      cursor: pointer;
+      font-size: 15px;
+      color: #1f2933;
+    }
+    .tabs button.active { background: #fff; font-weight: 600; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card h2 { font-size: 17px; margin-bottom: 16px; color: #16324f; }
+    form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    label { display: flex; flex-direction: column; font-size: 13px; color: #52606d; gap: 4px; }
+    input, select {
+      padding: 9px 10px;
+      border: 1px solid #cbd2d9;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button.primary {
+      background: #16324f;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      align-self: end;
+    }
+    button.primary:hover { background: #1f456b; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e4e7eb; font-size: 14px; }
+    th { background: #f4f5f7; color: #52606d; font-weight: 600; }
+    .msg { margin-top: 12px; font-size: 14px; }
+    .msg.error { color: #c0392b; }
+    .msg.success { color: #20804f; }
+    .actions button {
+      margin-right: 6px; padding: 4px 10px; border-radius: 5px;
+      border: 1px solid #cbd2d9; background: #fff; cursor: pointer; font-size: 13px;
+    }
+    .actions button.edit { color: #16324f; }
+    .empty { color: #7b8794; padding: 12px 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header><h1>Demo HRIS</h1></header>
+
+  <main>
+    <div class="tabs">
+      <button id="tab-employees" class="active" onclick="showTab('employees')">Employees</button>
+      <button id="tab-jobs" onclick="showTab('jobs')">Jobs</button>
+    </div>
+
+    <section id="panel-employees" class="panel active">
+      <div class="card">
+        <h2>Add Employee</h2>
+        <form id="employee-form">
+          <label>First name <input name="firstName" required /></label>
+          <label>Last name <input name="lastName" required /></label>
+          <label>Email <input name="email" type="email" required /></label>
+          <label>Phone number <input name="phoneNumber" required /></label>
+          <label>Job (related) <select name="jobId" required></select></label>
+          <button class="primary" type="submit">Add employee</button>
+        </form>
+        <div class="msg" id="employee-msg"></div>
+      </div>
+      <div class="card">
+        <h2>Employees</h2>
+        <div id="employee-list"></div>
+      </div>
+    </section>
+
+    <section id="panel-jobs" class="panel">
+      <div class="card">
+        <h2>Add Job</h2>
+        <form id="job-form">
+          <label>Name <input name="name" required /></label>
+          <label>Description <input name="description" required /></label>
+          <label>Department <input name="department" required /></label>
+          <button class="primary" type="submit">Add job</button>
+        </form>
+        <div class="msg" id="job-msg"></div>
+      </div>
+      <div class="card">
+        <h2>Jobs</h2>
+        <div id="job-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = { employees: [], jobs: [] };
+
+    async function api(path, method = "GET", body) {
+      const res = await fetch(path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json();
+      return { res, data };
+    }
+
+    function showTab(name) {
+      document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+      document.getElementById(`tab-${name}`).classList.add("active");
+      document.getElementById(`panel-${name}`).classList.add("active");
+    }
+
+    function jobName(jobId) {
+      const job = state.jobs.find((j) => j.id === Number(jobId));
+      return job ? `${job.name} (${job.department})` : `#${jobId}`;
+    }
+
+    async function loadJobs() {
+      const { data } = await api("/jobs");
+      state.jobs = Array.isArray(data) ? data : [];
+      const select = document.querySelector('#employee-form select[name="jobId"]');
+      select.innerHTML = "";
+      state.jobs.forEach((j) => {
+        const opt = document.createElement("option");
+        opt.value = j.id;
+        opt.textContent = `${j.name} (${j.department})`;
+        select.appendChild(opt);
+      });
+      renderJobs();
+    }
+
+    async function loadEmployees() {
+      const { data } = await api("/employees");
+      state.employees = Array.isArray(data) ? data : [];
+      renderEmployees();
+    }
+
+    function renderJobs() {
+      const el = document.getElementById("job-list");
+      if (!state.jobs.length) { el.innerHTML = '<div class="empty">No jobs yet.</div>'; return; }
+      const rows = state.jobs.map((j) => `
+        <tr>
+          <td>${j.name}</td>
+          <td>${j.description}</td>
+          <td>${j.department}</td>
+          <td class="actions">
+            <button class="edit" onclick="editJob(${j.id})">Edit</button>
+          </td>
+        </tr>`).join("");
+      el.innerHTML = `<table><thead><tr><th>Name</th><th>Description</th><th>Department</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function renderEmployees() {
+      const el = document.getElementById("employee-list");
+      if (!state.employees.length) { el.innerHTML = '<div class="empty">No employees yet.</div>'; return; }
+      const rows = state.employees.map((e) => `
+        <tr>
+          <td>${e.firstName}</td>
+          <td>${e.lastName}</td>
+          <td>${e.email}</td>
+          <td>${e.phoneNumber}</td>
+          <td>${jobName(e.jobId)}</td>
+          <td class="actions">
+            <button class="edit" onclick="editEmployee(${e.id})">Edit</button>
+          </td>
+        </tr>`).join("");
+      el.innerHTML = `<table><thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function setMsg(id, text, type = "success") {
+      const el = document.getElementById(id);
+      if (!text) { el.textContent = ""; return; }
+      el.textContent = text;
+      el.className = `msg ${type}`;
+    }
+
+    function extractErrors(data) {
+      if (data && Array.isArray(data.errors)) return data.errors.join(", ");
+      if (data && data.error) return data.error;
+      return "Something went wrong.";
+    }
+
+    // ----- Employee submit / edit -----
+    let editingEmployeeId = null;
+    document.getElementById("employee-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const body = {
+        firstName: form.firstName.value.trim(),
+        lastName: form.lastName.value.trim(),
+        email: form.email.value.trim(),
+        phoneNumber: form.phoneNumber.value.trim(),
+        jobId: Number(form.jobId.value),
+      };
+      const isEdit = editingEmployeeId != null;
+      const path = isEdit ? `/employees/${editingEmployeeId}` : "/employees";
+      const method = isEdit ? "PATCH" : "POST";
+      const { res, data } = await api(path, method, body);
+      if (!res.ok) {
+        setMsg("employee-msg", extractErrors(data), "error");
+        return;
+      }
+      setMsg("employee-msg", isEdit ? "Employee updated." : "Employee added.");
+      editingEmployeeId = null;
+      document.getElementById("employee-form").querySelector('button[type="submit"]').textContent = "Add employee";
+      form.reset();
+      await loadEmployees();
+    });
+
+    function editEmployee(id) {
+      const e = state.employees.find((emp) => emp.id === id);
+      if (!e) return;
+      editingEmployeeId = id;
+      const form = document.getElementById("employee-form");
+      form.firstName.value = e.firstName;
+      form.lastName.value = e.lastName;
+      form.email.value = e.email;
+      form.phoneNumber.value = e.phoneNumber;
+      form.jobId.value = e.jobId;
+      document.getElementById("employee-form").querySelector('button[type="submit"]').textContent = "Save changes";
+      setMsg("employee-msg", "");
+    }
+
+    // ----- Job submit / edit -----
+    let editingJobId = null;
+    document.getElementById("job-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const body = {
+        name: form.name.value.trim(),
+        description: form.description.value.trim(),
+        department: form.department.value.trim(),
+      };
+      const isEdit = editingJobId != null;
+      const path = isEdit ? `/jobs/${editingJobId}` : "/jobs";
+      const method = isEdit ? "PATCH" : "POST";
+      const { res, data } = await api(path, method, body);
+      if (!res.ok) {
+        setMsg("job-msg", extractErrors(data), "error");
+        return;
+      }
+      setMsg("job-msg", isEdit ? "Job updated." : "Job added.");
+      editingJobId = null;
+      document.getElementById("job-form").querySelector('button[type="submit"]').textContent = "Add job";
+      form.reset();
+      await Promise.all([loadJobs(), loadEmployees()]);
+    });
+
+    function editJob(id) {
+      const j = state.jobs.find((job) => job.id === id);
+      if (!j) return;
+      editingJobId = id;
+      const form = document.getElementById("job-form");
+      form.name.value = j.name;
+      form.description.value = j.description;
+      form.department.value = j.department;
+      document.getElementById("job-form").querySelector('button[type="submit"]').textContent = "Save changes";
+      setMsg("job-msg", "");
+    }
+
+    loadJobs().then(loadEmployees);
+  </script>
+</body>
+</html>
