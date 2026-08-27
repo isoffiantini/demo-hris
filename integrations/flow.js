@@ -133,9 +133,14 @@ function resolveRecordId(req) {
   const candidates = [
     body.recordId,
     body.record_id,
+    body.id,
     props.recordId,
     props.record_id,
     props.id,
+    props.personId,
+    props.candidateId,
+    props.person_id,
+    props.record,
     body.record,
     getHeaderValue(req, RECORD_ID_HEADERS),
   ];
@@ -171,6 +176,13 @@ function buildEmployeeLogs(req, employee, upserted) {
   const trackingCode = resolveTrackingCode(req);
   const resolvedRecordId = resolveRecordId(req);
   const recordId = resolvedRecordId === null || resolvedRecordId === "" ? record.id : resolvedRecordId;
+  if (resolvedRecordId === null || resolvedRecordId === "") {
+    console.warn(
+      `[flow_create_employee] No recordId found in request payload; falling back to HRIS record id ${record.id}. Full body: ${JSON.stringify(req.body || {})}`
+    );
+  } else {
+    console.log(`[flow_create_employee] Using recordId=${JSON.stringify(recordId)} from request payload`);
+  }
   const url = employeeUrl(req, record.id);
 
   const first = created
@@ -243,8 +255,10 @@ router.post("/flow_create_employee", async (req, res) => {
     const upserted = upsertEmployee(employee);
 
     const trackingCode = resolveTrackingCode(req);
+    const resolvedRecordId = resolveRecordId(req);
+    const payloadRecordId = resolvedRecordId === null ? null : resolvedRecordId;
     console.log(
-      `[flow_create_employee] trackingCode="${trackingCode}" diagnostics=${JSON.stringify(trackingDiagnostics(req))}`
+      `[flow_create_employee] trackingCode="${trackingCode}" recordIdFromPayload=${JSON.stringify(payloadRecordId)} body=${JSON.stringify(req.body || {})}`
     );
     if (trackingCode) {
       void postLogsAsync(req, employee, upserted);
