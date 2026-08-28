@@ -50,7 +50,7 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 `GET /employees`, `GET /jobs`, `GET /departments` y `GET /locations` usan paginación por cursor:
 
 - `?pageSize=N` — tamaño de página (default `10`, máximo `100`).
-- `?cursor=...` — cursor opaco para la página siguiente (tomado de `next.cursor`).
+- `?cursor=...` — cursor opaco para la página siguiente (tomado de `next.cursor` o de `links.next`).
 
 `GET /employees` adicionalmente acepta `?jobId=N`, `?firstName=<texto>` (case-insensitive, substring), `?employmentStatus=Hired|Ex Employee` y `?sort=hireDate` con `?order=asc|desc` (por defecto `asc`) para filtrar/ordenar en el servidor; pueden combinarse.
 
@@ -62,9 +62,15 @@ Respuesta:
 {
   "data": [ ... ],
   "pageSize": 10,
-  "next": { "cursor": "..." }   // null si no hay más páginas
+  "next": { "cursor": "..." },   // null si no hay más páginas
+  "links": {
+    "self": "https://.../employees?pageSize=10&employmentStatus=Hired",
+    "next": "https://.../employees?pageSize=10&employmentStatus=Hired&cursor=..."  // null si no hay más páginas
+  }
 }
 ```
+
+`links.next` es la URL absoluta completa con el `cursor` ya incluido como query param (y preservando los filtros/sort/paginación de la request): podés paginar automáticamente repitiendo `GET` sobre `links.next` hasta que sea `null`. El esquema se toma del header `x-forwarded-proto` (usado detrás de proxies), con fallback al `protocol` de la request.
 
 ## Health
 

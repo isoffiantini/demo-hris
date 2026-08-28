@@ -186,6 +186,14 @@ function decodeCursor(cursor) {
   }
 }
 
+function requestUrl(req) {
+  const scheme = String(req.headers["x-forwarded-proto"] || req.protocol || "http")
+    .split(",")[0]
+    .trim();
+  const host = req.get("host") || "";
+  return new URL(req.originalUrl, `${scheme}://${host}`);
+}
+
 function paginateCursor(list, req, sortFn) {
   const pageSizeRaw = Number(req.query.pageSize);
   const pageSize = Number.isInteger(pageSizeRaw) && pageSizeRaw > 0
@@ -209,13 +217,22 @@ function paginateCursor(list, req, sortFn) {
 
   const page = sorted.slice(startIndex, startIndex + pageSize);
   const hasMore = startIndex + page.length < sorted.length;
+  const nextCursor = hasMore
+    ? encodeCursor(sortFn ? startIndex + page.length : page[page.length - 1].id)
+    : null;
+
+  const selfUrl = requestUrl(req);
+  const nextUrl = new URL(selfUrl.toString());
+  if (nextCursor) nextUrl.searchParams.set("cursor", nextCursor);
 
   return {
     data: page,
     pageSize,
-    next: hasMore
-      ? { cursor: encodeCursor(sortFn ? startIndex + page.length : page[page.length - 1].id) }
-      : null,
+    next: nextCursor ? { cursor: nextCursor } : null,
+    links: {
+      self: selfUrl.toString(),
+      next: nextCursor ? nextUrl.toString() : null,
+    },
   };
 }
 
