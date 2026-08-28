@@ -88,7 +88,6 @@ async function getEmployeeSyncForm(avatureId) {
   }
 const url = coreFormUrl(avatureId);
   const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
-  console.log(`[hrisSync] sync form response preview: ${text.slice(0, 600)}`);
   if (!res.ok) {
     throw new Error(`avature sync form GET failed: ${res.status} ${text.slice(0, 300)}`);
   }
@@ -111,7 +110,6 @@ async function getAvatureRecordNames(avatureId) {
   }
 const url = coreRecordUrl(avatureId);
   const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
-  console.log(`[hrisSync] record response preview: ${text.slice(0, 600)}`);
   if (!res.ok) {
     throw new Error(`avature record GET failed: ${res.status} ${text.slice(0, 300)}`);
   }
@@ -145,10 +143,9 @@ function formBody(personId, fields) {
 
 async function requestJson(url, options) {
   const method = (options && options.method) || "GET";
-  console.log(`[hrisSync] ${method} ${url}`);
   const res = await fetch(url, options);
   const text = await res.text().catch(() => "");
-  console.log(`[hrisSync] ${method} ${url} -> status=${res.status} bytes=${text.length}`);
+  console.log(`[hrisSync] ${method} ${url} -> ${res.status} (${text.length} bytes)`);
   return { res, text };
 }
 
@@ -188,9 +185,7 @@ async function attachForm(personId, fields) {
   const baseUrl = formUrl(personId);
   const body = formBody(personId, fields);
 
-  console.log(`[hrisSync] GET ${baseUrl} (personId=${personId} hrisId=${fields.hrisExternalId})`);
   const get = await requestJson(baseUrl, { headers: apiKeyHeaders() });
-  console.log(`[hrisSync] GET status=${get.res.status}`);
   if (!get.res.ok) {
     throw new Error(`hrisSync GET failed: ${get.res.status} ${get.text}`);
   }
@@ -205,7 +200,6 @@ async function attachForm(personId, fields) {
       headers: apiKeyHeaders(),
       body: JSON.stringify(body),
     });
-    console.log(`[hrisSync] POST status=${post.res.status} response=${post.text.slice(0, 500)}`);
     if (!post.res.ok) {
       throw new Error(`hrisSync POST failed: ${post.res.status} ${post.text}`);
     }
@@ -242,13 +236,11 @@ async function patchFormAt(personId, formId, fields, baseUrlOverride) {
   const baseUrl = baseUrlOverride || formUrl(personId);
   const patchUrl = `${baseUrl}/${formId}`;
   const body = formBody(personId, fields);
-  console.log(`[hrisSync] PATCH ${patchUrl} (personId=${personId} hrisId=${fields.hrisExternalId})`);
   const patch = await requestJson(patchUrl, {
     method: "PATCH",
     headers: apiKeyHeaders(),
     body: JSON.stringify(body),
   });
-  console.log(`[hrisSync] PATCH status=${patch.res.status} response=${patch.text.slice(0, 500)}`);
   if (!patch.res.ok) {
     throw new Error(`hrisSync PATCH failed: ${patch.res.status} ${patch.text}`);
   }

@@ -88,8 +88,7 @@ const EMPLOYMENT_STATUSES = ["Hired", "Ex Employee"];
 const JOB_STATUSES = ["open", "closed"];
 const EMPLOYMENT_TYPES = ["Remote", "On-site"];
 
-function validateEmployee(body, partial) {
-  const required = ["firstName", "lastName", "email", "phoneNumber", "jobId"];
+function checkRequiredAndEmpty(required, body, partial) {
   const errors = [];
   for (const field of required) {
     if (!partial && !(field in body)) {
@@ -98,6 +97,11 @@ function validateEmployee(body, partial) {
       errors.push(`${field} cannot be empty`);
     }
   }
+  return errors;
+}
+
+function validateEmployee(body, partial) {
+  const errors = checkRequiredAndEmpty(["firstName", "lastName", "email", "phoneNumber", "jobId"], body, partial);
   if (body.jobId !== undefined && !Number.isInteger(body.jobId)) {
     errors.push("jobId must be a positive integer");
   }
@@ -124,15 +128,7 @@ function validateEmployee(body, partial) {
 }
 
 function validateJob(body, partial) {
-  const required = ["name", "description", "departmentId", "status", "employmentType", "locationId"];
-  const errors = [];
-  for (const field of required) {
-    if (!partial && !(field in body)) {
-      errors.push(`${field} is required`);
-    } else if (body[field] !== undefined && (body[field] === "" || body[field] === null)) {
-      errors.push(`${field} cannot be empty`);
-    }
-  }
+  const errors = checkRequiredAndEmpty(["name", "description", "departmentId", "status", "employmentType", "locationId"], body, partial);
   if (body.status !== undefined && !JOB_STATUSES.includes(body.status)) {
     errors.push("status must be either 'open' or 'closed'");
   }
@@ -149,28 +145,12 @@ function validateJob(body, partial) {
 }
 
 function validateDepartment(body, partial) {
-  const required = ["name"];
-  const errors = [];
-  for (const field of required) {
-    if (!partial && !(field in body)) {
-      errors.push(`${field} is required`);
-    } else if (body[field] !== undefined && (body[field] === "" || body[field] === null)) {
-      errors.push(`${field} cannot be empty`);
-    }
-  }
+  const errors = checkRequiredAndEmpty(["name"], body, partial);
   return errors;
 }
 
 function validateLocation(body, partial) {
-  const required = ["country", "state"];
-  const errors = [];
-  for (const field of required) {
-    if (!partial && !(field in body)) {
-      errors.push(`${field} is required`);
-    } else if (body[field] !== undefined && (body[field] === "" || body[field] === null)) {
-      errors.push(`${field} cannot be empty`);
-    }
-  }
+  const errors = checkRequiredAndEmpty(["country", "state"], body, partial);
   return errors;
 }
 

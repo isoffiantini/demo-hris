@@ -7,7 +7,7 @@ const router = express.Router();
 
 const RECORD_TYPE_EMPLOYEE = 2;
 
-const HRIS_BASE_URL = process.env.HRIS_BASE_URL || "https://demo-hris.onrender.com";
+const HRIS_BASE_URL = process.env.HRIS_BASE_URL || "https://moccasin-cattle-483922.hostingersite.com";
 
 function respondAsync(res) {
   res.json({ asyncResponse: { successful: true } });
@@ -100,26 +100,18 @@ router.get("/webhook", (req, res) => {
     req.query.challenge_code ||
     req.query.challenge ||
     "";
-  const headers = req.headers || {};
-  console.log(
-    `[webhook] GET challengeHeader="${req.get("avature-challenge-code") || ""}" query=${JSON.stringify(req.query || {})} hasAvatureChallengeCode=${"avature-challenge-code" in headers} allRequestHeaders=${JSON.stringify(Object.keys(headers))}`
-  );
   res.json({ "avature-challenge-code": challenge });
 });
 
 async function handleWebhookEvent(req, avatureId) {
-  console.log(`[webhook] record=${avatureId} -> step 1: checking hris_employee_sync form (avature id ${avatureId})`);
   const sync = await getEmployeeSyncForm(avatureId);
-  console.log(`[webhook] record=${avatureId} -> step 1 result: formPresent=${!!sync.form} formId=${sync.formId} hrisExternalId=${sync.hrisExternalId}`);
   if (!sync.form) {
     return { action: "not-synced", detail: "no hris_employee_sync form found" };
   }
   if (!sync.hrisExternalId) {
     return { action: "skipped", detail: "form found but hris_external_id is missing" };
   }
-  console.log(`[webhook] record=${avatureId} -> step 2: fetching record names from Avature`);
   const names = await getAvatureRecordNames(avatureId);
-  console.log(`[webhook] record=${avatureId} -> step 2 result: firstName="${names.firstName}" lastName="${names.lastName}"`);
   if (!names.firstName || !names.lastName) {
     return {
       action: "skipped",
@@ -128,32 +120,26 @@ async function handleWebhookEvent(req, avatureId) {
   }
   const data = readData();
   const employee = data.employees.find((e) => String(e.id) === String(sync.hrisExternalId));
-  console.log(`[webhook] record=${avatureId} -> step 3: looking up HRIS employee with id=${sync.hrisExternalId} found=${!!employee}`);
   if (!employee) {
     return {
       action: "not-synced",
       detail: `hris_external_id=${sync.hrisExternalId} does not match any HRIS employee`,
     };
   }
-  const sameNames = employee.firstName === names.firstName && employee.lastName === names.lastName;
-  console.log(`[webhook] record=${avatureId} -> step 4: HRIS currently firstName="${employee.firstName}" lastName="${employee.lastName}" avature="${names.firstName} ${names.lastName}" namesMatch=${sameNames}`);
-  if (sameNames) {
+  if (employee.firstName === names.firstName && employee.lastName === names.lastName) {
     return { action: "match", detail: `names unchanged (${names.firstName} ${names.lastName})` };
   }
   employee.firstName = names.firstName;
   employee.lastName = names.lastName;
   writeData(data);
-  console.log(`[webhook] record=${avatureId} -> step 5: HRIS employee id=${employee.id} names updated`);
 
   if (sync.formId) {
-    console.log(`[webhook] record=${avatureId} -> step 6: patching sync form id=${sync.formId} with Last Synced (hrisSync REST API)`);
     await patchFormAt(avatureId, sync.formId, {
       hrisExternalId: sync.hrisExternalId,
       hrisUrl: employeeUrl(req, employee.id),
       syncDetails: "Success",
       lastSynced: utcDateTime(),
     });
-    console.log(`[webhook] record=${avatureId} -> step 6 result: form patched (Last Synced updated)`);
   } else {
     console.warn(`[webhook] record=${avatureId} no formId available; Last Synced not updated`);
   }
@@ -171,29 +157,24 @@ function formatWebhookResult(result) {
 router.post("/webhook", async (req, res) => {
   const payload = req.body || {};
   const tracking = resolveTrackingCode(req);
-  const challenge = req.get("avature-challenge-code") || "";
   const events = Array.isArray(payload.events) ? payload.events : [];
   const bodyKeys = Object.keys(payload);
-  console.log(
-    `[webhook] POST received content-type="${req.headers["content-type"] || "(none)"}" trackingCode="${tracking}" challenge="${challenge}" bodyKeys=${JSON.stringify(bodyKeys)}`
-  );
+  console.log(`[webhook] POST events=${events.length} trackingCode="${tracking}"`);
+
   if (!bodyKeys.length) {
     console.warn(
-      `[webhook] POST body could not be parsed as JSON (raw body preview: "${String(req.rawBody || "").slice(0, 500)}"). Check that Avature sends Content-Type: application/json.`
+      `[webhook] POST body could not be parsed as JSON (raw body preview: "${String(req.rawBody || "").slice(0, 500)}")`
     );
   }
-  console.log(`[webhook] POST totalCount=${payload.totalCount ?? events.length} events=${events.length} rawEvent=${events.length ? JSON.stringify(events[0]) : "(none)"}`);
 
   res.json({ success: true });
 
   for (const ev of events) {
     const avatureId = ev.record && ev.record.id;
-    const subscriptionType = ev.subscription && ev.subscription.type;
     if (avatureId === undefined || avatureId === null) {
-      console.warn(`[webhook] event without record.id (subscription=${subscriptionType}); skipping`);
+      console.warn("[webhook] event without record.id; skipping");
       continue;
     }
-    console.log(`[webhook] event subscription="${subscriptionType}" recordId=${avatureId} serialId=${ev.serialId}`);
     try {
       const result = await handleWebhookEvent(req, avatureId);
       console.log(`[webhook] record=${avatureId} -> ${formatWebhookResult(result)}`);

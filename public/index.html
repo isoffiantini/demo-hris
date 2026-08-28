@@ -199,7 +199,7 @@
   <script>
     const PAGE_SIZE = 50;
     const CURRENT_USER = "Ignacio";
-    const state = { employees: [], jobs: [], departments: [], locations: [] };
+    const state = { jobs: [], departments: [], locations: [] };
     const pages = {
       employees: { list: [], pageCursor: null, next: null, prevStack: [], jobFilter: null, nameFilter: null, sortFilter: null, statusFilter: null },
       jobs: { list: [], pageCursor: null, next: null, prevStack: [], statusFilter: null },
@@ -991,12 +991,10 @@
     }
 
     async function loadData() {
-      const [empRes, jobRes, locRes] = await Promise.all([
-        api("/employees?pageSize=100"),
+      const [jobRes, locRes] = await Promise.all([
         api("/jobs?pageSize=100"),
         api("/locations?pageSize=100"),
       ]);
-      state.employees = empRes.data && Array.isArray(empRes.data.data) ? empRes.data.data : [];
       state.jobs = jobRes.data && Array.isArray(jobRes.data.data) ? jobRes.data.data : [];
       state.locations = locRes.data && Array.isArray(locRes.data.data) ? locRes.data.data : [];
       await Promise.all([

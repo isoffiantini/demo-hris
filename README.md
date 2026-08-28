@@ -131,13 +131,13 @@ El body de POST y PATCH es:
 {
   "personId": <id de Avature>,
   "HRIS External ID": <id del registro en el HRIS>,
-  "HRIS URL": "https://demo-hris.onrender.com/#/people/<id>",
+  "HRIS URL": "https://moccasin-cattle-483922.hostingersite.com/#/people/<id>",
   "Sync Details": "Success",
   "Last Synced": "yyyy-MM-dd'T'HH:mm:ss.SSS+0000"
 }
 ```
 
-`HRIS URL` usa la variable `HRIS_BASE_URL` (por defecto `https://demo-hris.onrender.com`). `Sync Details` es siempre `"Success"` cuando el sync se completa.
+`HRIS URL` usa la variable `HRIS_BASE_URL` (por defecto `https://moccasin-cattle-483922.hostingersite.com`). `Sync Details` es siempre `"Success"` cuando el sync se completa.
 
 **Validación:** si `firstName`, `lastName` o `email` faltan o vienen vacíos, NO se crea el empleado: responde `400` con `{ "asyncResponse": { "successful": false, "errors": [...] } }` y se registra un log `ERROR` en la ejecución (Junction Events). En ese caso el form de Avature se adjunta igualmente, pero sólo con `Sync Details` (mensaje del error) y `Last Synced`; el resto de los campos (`HRIS External ID`, `HRIS URL`) van vacíos.
 
