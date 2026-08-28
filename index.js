@@ -90,6 +90,9 @@ app.get("/sync-locations", async (req, res) => {
   const started = Date.now();
   try {
     const upstream = await fetch(JUNCTION_LOCATIONS_SYNC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operation: "sync_locations" }),
       signal: AbortSignal.timeout(30000),
     });
     const text = await upstream.text().catch(() => "");
