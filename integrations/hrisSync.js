@@ -247,6 +247,37 @@ async function patchFormAt(personId, formId, fields, baseUrlOverride) {
   return { action: "patched", status: patch.res.status, formId };
 }
 
+function compoundApplicationUrl(applicationId) {
+  return `${AVATURE_REST_BASE_URL}/rest/hrisSync/compoundRecords_8/${applicationId}`;
+}
+
+async function moveApplicationToStep(applicationId, stepId) {
+  if (!AVATURE_REST_API_KEY) {
+    console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; skipping workflow step update.");
+    throw new Error("AVATURE_REST_API_KEY is not set");
+  }
+  const url = compoundApplicationUrl(applicationId);
+  const body = { workflow: { step: { id: Number(stepId) } } };
+  const { res, text } = await requestJson(url, {
+    method: "PATCH",
+    headers: apiKeyHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`hrisSync application step PATCH failed: ${res.status} ${text.slice(0, 300)}`);
+  }
+  const parsed = parseJson(text);
+  console.log(
+    `[hrisSync] application=${applicationId} moved to step=${stepId} taskId=${(parsed && parsed.taskId) || "(none)"} status=${(parsed && parsed.status) || res.status}`
+  );
+  return {
+    applicationId: String(applicationId),
+    stepId: Number(stepId),
+    status: res.status,
+    taskId: parsed && parsed.taskId ? parsed.taskId : null,
+  };
+}
+
 module.exports = {
   AVATURE_REST_BASE_URL,
   AVATURE_REST_API_KEY,
@@ -256,4 +287,5 @@ module.exports = {
   coreFormBaseUrl,
   getEmployeeSyncForm,
   getAvatureRecordNames,
+  moveApplicationToStep,
 };

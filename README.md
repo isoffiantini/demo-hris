@@ -100,7 +100,7 @@ POST /flow_create_employee
 
 Crea (o actualiza) el empleado en el HRIS y registra la ejecución del flow en la API de Junction Events.
 
-**Input:** el payload de Avature (`{ "properties": { ... } }`) con `firstName`, `lastName`, `email`, `phone`, `job_hris_id`, y opcionalmente `recordId`.
+**Input:** el payload de Avature (`{ "properties": { ... } }`) con `firstName`, `lastName`, `email`, `phone`, `job_hris_id`, y opcionalmente `recordId`. Opcional: `application_id` (id del compound record `compoundRecords_8` / aplicación), usado para mover al candidato al siguiente paso del workflow (ver abajo).
 
 **Headers relevantes:**
 - `Avature-Tracking-Code` (o `Tracking-Code`, `X-Tracking-Code`): identifica la ejecución y se reenvía en los logs de Junction Events. Si no llega, no se envían logs.
@@ -138,6 +138,8 @@ El body de POST y PATCH es:
 ```
 
 `HRIS URL` usa la variable `HRIS_BASE_URL` (por defecto `https://moccasin-cattle-483922.hostingersite.com`). `Sync Details` es siempre `"Success"` cuando el sync se completa.
+
+**Cambio de paso de la aplicación:** si la sincronización terminó con éxito (form `838` creado o actualizado con `Sync Details: "Success"`) y la request trae `application_id` (en `properties`), el candidato se mueve al paso de workflow `563` vía `PATCH {base}/rest/hrisSync/compoundRecords_8/{application_id}` con body `{ "workflow": { "step": { "id": 563 } } }` (endpoint asíncrono de Avature, responde `202` con un background task). Si el `application_id` no viene, se saltea el cambio de paso (warning) y el flujo termina igual en `SUCCESS`. Si el form NUNCA se sincroniza exitosamente (validación falló o form sync skipped), el paso no se modifica.
 
 **Validación:** si `firstName`, `lastName` o `email` faltan o vienen vacíos, NO se crea el empleado: responde `400` con `{ "asyncResponse": { "successful": false, "errors": [...] } }` y se registra un log `ERROR` en la ejecución (Junction Events). En ese caso el form de Avature se adjunta igualmente, pero sólo con `Sync Details` (mensaje del error) y `Last Synced`; el resto de los campos (`HRIS External ID`, `HRIS URL`) van vacíos.
 

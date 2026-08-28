@@ -1,11 +1,12 @@
 const express = require("express");
 const { readData, writeData, nextId } = require("../store");
 const { resolveTrackingCode, resolveRecordId, sendErrorLog, utcDateTime, resolveLogContext, makeLog, sendLogSafe } = require("./junction");
-const { attachForm, patchFormAt, getEmployeeSyncForm, getAvatureRecordNames } = require("./hrisSync");
+const { attachForm, patchFormAt, getEmployeeSyncForm, getAvatureRecordNames, moveApplicationToStep } = require("./hrisSync");
 
 const router = express.Router();
 
 const RECORD_TYPE_EMPLOYEE = 2;
+const APPLICATION_STEP_HIRED = 563;
 
 const HRIS_BASE_URL = process.env.HRIS_BASE_URL || "https://moccasin-cattle-483922.hostingersite.com";
 
@@ -68,6 +69,17 @@ function upsertEmployee(employee, avaturePersonId) {
 
 function employeeUrl(req, id) {
   return `${HRIS_BASE_URL}/#/people/${id}`;
+}
+
+function resolveApplicationId(payload) {
+  const props = (payload && payload.properties) || {};
+  const candidates = [props.application_id, props.applicationId, payload.application_id];
+  for (const candidate of candidates) {
+    if (candidate !== undefined && candidate !== null && String(candidate).trim() !== "") {
+      return String(candidate).trim();
+    }
+  }
+  return "";
 }
 
 function validateFlowInput(employee) {
@@ -236,8 +248,9 @@ router.post("/flow_create_employee", async (req, res) => {
       : `An employee with email ${employee.email} already existed in the HRIS. The corresponding record was updated with the information received. You can view the record at ${url}`;
 
     const trackingCode = resolveTrackingCode(req);
+    const applicationId = resolveApplicationId(req.body);
     console.log(
-      `[flow_create_employee] trackingCode="${trackingCode}" recordIdFromPayload=${JSON.stringify(requestPersonId)} avaturePersonId=${JSON.stringify(personId)} body=${JSON.stringify(req.body || {})}`
+      `[flow_create_employee] trackingCode="${trackingCode}" recordIdFromPayload=${JSON.stringify(requestPersonId)} avaturePersonId=${JSON.stringify(personId)} applicationId="${applicationId}" body=${JSON.stringify(req.body || {})}`
     );
 
     void (async () => {
@@ -280,6 +293,38 @@ router.post("/flow_create_employee", async (req, res) => {
             "INFO"
           )
         );
+
+        if (applicationId) {
+          try {
+            await moveApplicationToStep(applicationId, APPLICATION_STEP_HIRED);
+            await sendLogSafe(
+              makeLog(
+                ctx,
+                RECORD_TYPE_EMPLOYEE,
+                "Candidate moved to next workflow step.",
+                `The candidate was moved to workflow step ${APPLICATION_STEP_HIRED} (application id ${applicationId}).`,
+                "INFO"
+              )
+            );
+          } catch (moveErr) {
+            console.error(
+              `[flow_create_employee] Failed to move application ${applicationId} to step ${APPLICATION_STEP_HIRED}: ${moveErr.message}`
+            );
+            await sendLogSafe(
+              makeLog(
+                ctx,
+                RECORD_TYPE_EMPLOYEE,
+                "Flow failed.",
+                `Execution failed: could not move application ${applicationId} to workflow step ${APPLICATION_STEP_HIRED} (${moveErr.message}).`,
+                "ERROR"
+              )
+            );
+            return;
+          }
+        } else {
+          console.warn("[flow_create_employee] No application_id in properties; skipping workflow step update.");
+        }
+
         await sendLogSafe(makeLog(ctx, RECORD_TYPE_EMPLOYEE, "Flow finished successfully.", "Execution was successful.", "SUCCESS"));
       } catch (err) {
         console.error(`[hrisSync] Failed to attach form: ${err.message}`);
