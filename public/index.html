@@ -48,6 +48,7 @@
     .main { flex: 1; padding: 28px 32px; }
     .topbar { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
     .topbar h1 { font-size: 22px; color: #16324f; }
+    .top-actions { display: flex; align-items: center; gap: 12px; margin: -8px 0 16px; }
     .subtitle { color: #52606d; font-size: 14px; }
 
     .card {
@@ -427,6 +428,9 @@
     function locationsListView() {
       return `
         ${pageTitle("Locations", "Browse your locations")}
+        <div class="top-actions">
+          <button id="sync-avature-btn" class="btn primary" onclick="syncWithAvature()">Sync With Avature</button>
+        </div>
         <div class="card">
           <div class="card-header">
             <h2>Locations</h2>
@@ -988,6 +992,25 @@
       await loadData();
       showToast("Location created.");
       render();
+    }
+
+    async function syncWithAvature() {
+      const btn = document.getElementById("sync-avature-btn");
+      if (btn && btn.disabled) return;
+      if (btn) { btn.disabled = true; btn.textContent = "Syncing..."; }
+      try {
+        const { res, data } = await api("/sync-locations");
+        if (!res.ok) { showToast(extractErrors(data), "error"); return; }
+        if (data && data.ok) {
+          showToast(`Avature sync started (HTTP ${data.status}).`);
+        } else {
+          showToast(`Avature sync responded HTTP ${data.status}.`, "error");
+        }
+      } catch (err) {
+        showToast(`Sync failed: ${err.message}`, "error");
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Sync With Avature"; }
+      }
     }
 
     async function loadData() {
