@@ -54,7 +54,7 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 
 `GET /employees` adicionalmente acepta `?jobId=N`, `?firstName=<texto>` (case-insensitive, substring), `?employmentStatus=Hired|Ex Employee` y `?sort=hireDate` con `?order=asc|desc` (por defecto `asc`) para filtrar/ordenar en el servidor; pueden combinarse.
 
-`GET /jobs` adicionalmente acepta `?status=open|closed` para filtrar en el servidor.
+`GET /jobs` adicionalmente acepta `?status=open|closed` y `?open=true|false` (`true` → sólo `open`, `false` → sólo `closed`) para filtrar en el servidor. En la respuesta de jobs, `department` es un objeto `{ "id": <id>, "name": "<nombre>" }` (o `null` si el departamento no existe).
 
 Respuesta:
 

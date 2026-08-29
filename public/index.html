@@ -240,9 +240,14 @@
       return state.jobs.find((j) => j.id === Number(id));
     }
 
+    function deptName(dept) {
+      if (dept === null || dept === undefined) return "—";
+      return typeof dept === "object" ? dept.name : String(dept);
+    }
+
     function jobName(id) {
       const j = jobById(id);
-      return j ? `${j.name} (${j.department})` : `#${id}`;
+      return j ? `${j.name} (${deptName(j.department)})` : `#${id}`;
     }
 
     function statusBadge(status) {
@@ -475,7 +480,7 @@
         <tbody>
           ${list.map((j) => `<tr class="clickable" data-href="#/jobs/${j.id}">
             <td>${esc(j.name)}</td>
-            <td>${esc(j.department)}</td>
+            <td>${esc(deptName(j.department))}</td>
             <td>${esc(j.employmentType)}</td>
             <td>${locationText(j)}</td>
             <td>${statusBadge(j.status)}</td>
@@ -652,7 +657,7 @@
       state.jobs.forEach((j) => {
         const opt = document.createElement("option");
         opt.value = j.id;
-        opt.textContent = `${j.name} (${j.department})`;
+        opt.textContent = `${j.name} (${deptName(j.department)})`;
         if (Number(selectedId) === j.id) opt.selected = true;
         select.appendChild(opt);
       });
@@ -668,7 +673,7 @@
       const hint = document.getElementById("dept-hint");
       if (!select || !hint) return;
       const j = state.jobs.find((jb) => jb.id === Number(select.value));
-      hint.textContent = j ? `Department: ${j.department || "—"}` : "Department: —";
+      hint.textContent = j ? `Department: ${deptName(j.department)}` : "Department: —";
     }
 
     async function populateDepartmentSelect(selectedId) {
@@ -846,7 +851,7 @@
                 <button class="danger" onclick="deleteJob(${j.id})">Delete</button>
               </div>
             </div>
-            <div class="detail-row"><span class="k">Department</span><span class="v">${esc(j.department)}</span></div>
+            <div class="detail-row"><span class="k">Department</span><span class="v">${esc(deptName(j.department))}</span></div>
             <div class="detail-row"><span class="k">Employment type</span><span class="v">${esc(j.employmentType)}</span></div>
             <div class="detail-row"><span class="k">Location</span><span class="v">${locationText(j)}</span></div>
             <div class="detail-row"><span class="k">Description</span><span class="v">${esc(j.description)}</span></div>

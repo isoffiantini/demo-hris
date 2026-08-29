@@ -291,7 +291,7 @@ function serializeJob(job) {
   const loc = data.locations.find((l) => l.id === job.locationId) || null;
   return {
     ...job,
-    department: dept ? dept.name : null,
+    department: dept ? { id: dept.id, name: dept.name } : null,
     location: loc ? { country: loc.country, state: loc.state } : null,
   };
 }
@@ -403,6 +403,16 @@ app.get("/jobs", (req, res) => {
     }
     if (status) {
       jobs = jobs.filter((j) => j.status === status);
+    }
+  }
+  if (req.query.open !== undefined) {
+    const open = String(req.query.open).trim().toLowerCase();
+    if (["1", "true", "yes", "on"].includes(open)) {
+      jobs = jobs.filter((j) => j.status === "open");
+    } else if (["0", "false", "no", "off"].includes(open)) {
+      jobs = jobs.filter((j) => j.status === "closed");
+    } else {
+      return res.status(400).json({ errors: ["open must be 'true' or 'false'"] });
     }
   }
   res.json(paginateCursor(jobs, req));
