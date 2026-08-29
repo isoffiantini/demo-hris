@@ -289,8 +289,9 @@ function serializeJob(job) {
   const data = readData();
   const dept = data.departments.find((d) => d.id === job.departmentId) || null;
   const loc = data.locations.find((l) => l.id === job.locationId) || null;
+  const { departmentId, ...rest } = job;
   return {
-    ...job,
+    ...rest,
     department: dept ? { id: dept.id, name: dept.name } : null,
     location: loc ? { country: loc.country, state: loc.state } : null,
   };
