@@ -48,7 +48,7 @@
     .main { flex: 1; padding: 28px 32px; }
     .topbar { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
     .topbar h1 { font-size: 22px; color: #16324f; }
-    .top-actions { display: flex; align-items: center; gap: 12px; margin: -8px 0 16px; }
+    .top-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
     .subtitle { color: #52606d; font-size: 14px; }
 
     .card {
@@ -323,8 +323,8 @@
     }
 
     // ---------- views ----------
-    function pageTitle(title, subtitle) {
-      return `<div class="topbar"><h1>${title}</h1>${subtitle ? `<span class="subtitle">${subtitle}</span>` : ""}</div>`;
+    function pageTitle(title, subtitle, actions) {
+      return `<div class="topbar"><h1>${title}</h1>${subtitle ? `<span class="subtitle">${subtitle}</span>` : ""}${actions ? `<div class="top-actions">${actions}</div>` : ""}</div>`;
     }
 
     function homeView() {
@@ -391,7 +391,7 @@
 
     function jobsListView() {
       return `
-        ${pageTitle("Jobs", "Manage your jobs")}
+        ${pageTitle("Jobs", "Manage your jobs", '<button id="sync-jobs-btn" class="btn primary" onclick="syncJobs()">Sync With Avature</button>')}
         <div class="card">
           <div class="card-header">
             <h2>Jobs</h2>
@@ -413,10 +413,7 @@
 
     function departmentsListView() {
       return `
-        ${pageTitle("Departments", "Browse your departments")}
-        <div class="top-actions">
-          <button id="sync-departments-btn" class="btn primary" onclick="syncDepartments()">Sync Departments</button>
-        </div>
+        ${pageTitle("Departments", "Browse your departments", '<button id="sync-departments-btn" class="btn primary" onclick="syncDepartments()">Sync With Avature</button>')}
         <div class="card">
           <div class="card-header">
             <h2>Departments</h2>
@@ -435,10 +432,7 @@
 
     function locationsListView() {
       return `
-        ${pageTitle("Locations", "Browse your locations")}
-        <div class="top-actions">
-          <button id="sync-avature-btn" class="btn primary" onclick="syncWithAvature()">Sync With Avature</button>
-        </div>
+        ${pageTitle("Locations", "Browse your locations", '<button id="sync-avature-btn" class="btn primary" onclick="syncWithAvature()">Sync With Avature</button>')}
         <div class="card">
           <div class="card-header">
             <h2>Locations</h2>
@@ -1028,6 +1022,10 @@
 
     function syncDepartments() {
       triggerSync("/sync-departments", "sync-departments-btn");
+    }
+
+    function syncJobs() {
+      triggerSync("/sync-jobs", "sync-jobs-btn");
     }
 
     async function loadData() {

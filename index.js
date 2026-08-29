@@ -110,6 +110,8 @@ app.get("/sync-locations", (req, res) => performSync("sync_locations", res));
 
 app.get("/sync-departments", (req, res) => performSync("sync_departments", res));
 
+app.get("/sync-jobs", (req, res) => performSync("sync_jobs", res));
+
 app.use(flowRouter);
 
 const EMPLOYMENT_STATUSES = ["Hired", "Ex Employee"];
