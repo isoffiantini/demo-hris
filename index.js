@@ -78,33 +78,37 @@ app.use((req, res, next) => {
   next();
 });
 
-const JUNCTION_LOCATIONS_SYNC_URL =
-  process.env.JUNCTION_LOCATIONS_SYNC_URL ||
+const JUNCTION_SYNC_URL =
+  process.env.JUNCTION_SYNC_URL ||
   "https://junctiontraining.avature.net/junction/endpoint/NKs4quRQCujidlzZadG4RKPlAryAbPinTAJY9bs6/";
+
+async function performSync(operation, res) {
+  const started = Date.now();
+  try {
+    const upstream = await fetch(JUNCTION_SYNC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operation }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const text = await upstream.text().catch(() => "");
+    console.log(
+      `[sync] operation=${operation} POST ${JUNCTION_SYNC_URL} -> ${upstream.status} (${Date.now() - started}ms, ${text.length} bytes)`
+    );
+    res.json({ ok: upstream.ok, status: upstream.status, body: text.slice(0, 2000) });
+  } catch (err) {
+    console.error(`[sync] operation=${operation} failed: ${err.message}`);
+    res.status(502).json({ errors: [`Sync request failed: ${err.message}`] });
+  }
+}
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.get("/sync-locations", async (req, res) => {
-  const started = Date.now();
-  try {
-    const upstream = await fetch(JUNCTION_LOCATIONS_SYNC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ operation: "sync_locations" }),
-      signal: AbortSignal.timeout(30000),
-    });
-    const text = await upstream.text().catch(() => "");
-    console.log(
-      `[sync-locations] GET ${JUNCTION_LOCATIONS_SYNC_URL} -> ${upstream.status} (${Date.now() - started}ms, ${text.length} bytes)`
-    );
-    res.json({ ok: upstream.ok, status: upstream.status, body: text.slice(0, 2000) });
-  } catch (err) {
-    console.error(`[sync-locations] failed: ${err.message}`);
-    res.status(502).json({ errors: [`Sync request failed: ${err.message}`] });
-  }
-});
+app.get("/sync-locations", (req, res) => performSync("sync_locations", res));
+
+app.get("/sync-departments", (req, res) => performSync("sync_departments", res));
 
 app.use(flowRouter);
 

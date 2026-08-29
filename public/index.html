@@ -409,6 +409,9 @@
     function departmentsListView() {
       return `
         ${pageTitle("Departments", "Browse your departments")}
+        <div class="top-actions">
+          <button id="sync-departments-btn" class="btn primary" onclick="syncDepartments()">Sync Departments</button>
+        </div>
         <div class="card">
           <div class="card-header">
             <h2>Departments</h2>
@@ -994,12 +997,13 @@
       render();
     }
 
-    async function syncWithAvature() {
-      const btn = document.getElementById("sync-avature-btn");
+    async function triggerSync(endpoint, buttonId) {
+      const btn = document.getElementById(buttonId);
       if (btn && btn.disabled) return;
+      const label = btn ? btn.textContent : "Sync";
       if (btn) { btn.disabled = true; btn.textContent = "Syncing..."; }
       try {
-        const { res, data } = await api("/sync-locations");
+        const { res, data } = await api(endpoint);
         if (!res.ok) { showToast(extractErrors(data), "error"); return; }
         if (data && data.ok) {
           showToast(`Avature sync started (HTTP ${data.status}).`);
@@ -1009,8 +1013,16 @@
       } catch (err) {
         showToast(`Sync failed: ${err.message}`, "error");
       } finally {
-        if (btn) { btn.disabled = false; btn.textContent = "Sync With Avature"; }
+        if (btn) { btn.disabled = false; btn.textContent = label; }
       }
+    }
+
+    function syncWithAvature() {
+      triggerSync("/sync-locations", "sync-avature-btn");
+    }
+
+    function syncDepartments() {
+      triggerSync("/sync-departments", "sync-departments-btn");
     }
 
     async function loadData() {
