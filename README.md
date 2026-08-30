@@ -96,7 +96,7 @@ Los triggers (`/sync-*`) están configurados por `JUNCTION_SYNC_URL` (por defect
 
 Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use al terminar el import), responden `200 { "ok": true, "operation", "method", "receivedAt" }` y loguean query + body recibidos. Operaciones no reconocidas → `404`.
 
-**Callback `sync-jobs`:** el body del POST puede venir como array directo o envuelto (`results`, `data`, etc.). Por cada registro que tenga `id` (id del job en Avature) y `schemaField_837_5_35914` (id del job en el HRIS), se actualiza el job interno del HRIS agregándole el campo `avatureId`. La respuesta incluye `updated` y `errors` (jobs no encontrados o sin id) si los hay.
+**Callback `sync-jobs`:** Avature envía el aviso del import como `multipart/form-data` (campos `result`, `processedCount`, `successfulCount`, `warningCount`, `failedCount`, `error`, `importerProcessId`, `entityProperties`). El servidor parsea `entityProperties` (JSON con los registros importados): por cada registro que tenga `id` (id del job en Avature) y `schemaField_837_5_35914` (id del job en el HRIS), se actualiza el job interno del HRIS agregándole el campo `avatureId`. La respuesta incluye `updated` y `errors` (jobs no encontrados, sin id, etc.) si los hay. También acepta un body JSON directo (array o envuelto) con los mismos campos.
 
 ## Integraciones
 

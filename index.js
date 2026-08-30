@@ -121,6 +121,24 @@ function normalizeKey(key) {
   return String(key).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function parseFormFields(rawBody) {
+  const fields = {};
+  if (typeof rawBody !== "string" || !rawBody) return fields;
+  const boundaryMatch = rawBody.match(/^--([^\r\n]+)/);
+  if (!boundaryMatch) return fields;
+  const boundary = boundaryMatch[1];
+  const chunks = rawBody.split(`--${boundary}`);
+  for (let i = 1; i < chunks.length; i += 1) {
+    const chunk = chunks[i];
+    const header = chunk.match(/\r?\n?Content-Disposition:\s*form-data;\s*name="([^"]+)"[^\r\n]*(?:\r?\n){1,2}/);
+    if (!header) continue;
+    const name = header[1];
+    let value = chunk.slice(header.index + header[0].length).replace(/\r?\n\s*$/, "");
+    fields[name] = value;
+  }
+  return fields;
+}
+
 function fieldValue(value) {
   if (value === undefined || value === null) return "";
   if (typeof value === "object") {
@@ -158,7 +176,7 @@ function applyJobAvatureIds(body) {
       errors.push(`record ${JSON.stringify(record.id)} has invalid ${JOB_HRIS_ID_FIELD}`);
       continue;
     }
-    if (!Number.isFinite(avatureId)) {
+    if (!Number.isFinite(avatureId) || avatureId <= 0) {
       errors.push(`jobId=${hrisJobId} has no Avature id`);
       continue;
     }
@@ -195,10 +213,26 @@ app.all("/callback/:operation", async (req, res) => {
   const response = { ok: true, operation, method: req.method, receivedAt };
   if (operation === "sync-jobs") {
     try {
-      const result = applyJobAvatureIds(req.body || {});
+      const ct = req.headers["content-type"] || "";
+      let processBody = req.body || {};
+      if (ct.toLowerCase().startsWith("multipart/form-data") && typeof req.rawBody === "string") {
+        const fields = parseFormFields(req.rawBody);
+        if (fields.entityProperties) {
+          try {
+            processBody = JSON.parse(fields.entityProperties);
+          } catch (err) {
+            response.ok = false;
+            response.errors = [`entityProperties is not valid JSON: ${err.message}`];
+          }
+        } else {
+          processBody = {};
+        }
+      }
+      const result = applyJobAvatureIds(processBody);
       response.updated = result.updated;
       if (result.errors.length) response.errors = result.errors;
-      if (result.updated) console.log(`[callback] sync-jobs updated ${result.updated} job(s) with Avature ids`);
+      if (result.updated)
+        console.log(`[callback] sync-jobs updated ${result.updated} job(s) with Avature ids`);
     } catch (err) {
       console.error(`[callback] sync-jobs processing failed: ${err.message}`);
       response.ok = false;
