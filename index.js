@@ -112,6 +112,102 @@ app.get("/sync-departments", (req, res) => performSync("sync_departments", res))
 
 app.get("/sync-jobs", (req, res) => performSync("sync_jobs", res));
 
+const CALLBACK_OPERATIONS = new Set(["sync-locations", "sync-departments", "sync-jobs"]);
+
+// Field in the jobs callback payload that carries the HRIS job id, and the record `id` carries the Avature job id.
+const JOB_HRIS_ID_FIELD = "schemaField_837_5_35914";
+
+function normalizeKey(key) {
+  return String(key).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function fieldValue(value) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "object") {
+    return String(value.value ?? value.text ?? value.name ?? "");
+  }
+  return String(value);
+}
+
+function collectRecordsWithField(node, fieldKey, out) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectRecordsWithField(item, fieldKey, out);
+    return;
+  }
+  if (Object.keys(node).some((k) => normalizeKey(k) === normalizeKey(fieldKey))) {
+    out.push(node);
+    return;
+  }
+  for (const key of Object.keys(node)) {
+    const value = node[key];
+    if (value && typeof value === "object") collectRecordsWithField(value, fieldKey, out);
+  }
+}
+
+function applyJobAvatureIds(body) {
+  const records = [];
+  collectRecordsWithField(body, JOB_HRIS_ID_FIELD, records);
+  const data = readData();
+  let updated = 0;
+  const errors = [];
+  for (const record of records) {
+    const hrisJobId = Number(fieldValue(record[JOB_HRIS_ID_FIELD]));
+    const avatureId = Number(record.id);
+    if (!Number.isFinite(hrisJobId) || hrisJobId <= 0) {
+      errors.push(`record ${JSON.stringify(record.id)} has invalid ${JOB_HRIS_ID_FIELD}`);
+      continue;
+    }
+    if (!Number.isFinite(avatureId)) {
+      errors.push(`jobId=${hrisJobId} has no Avature id`);
+      continue;
+    }
+    const job = data.jobs.find((j) => j.id === hrisJobId);
+    if (!job) {
+      errors.push(`jobId=${hrisJobId} not found in HRIS`);
+      continue;
+    }
+    job.avatureId = avatureId;
+    updated += 1;
+    console.log(`[callback] sync-jobs map jobId=${hrisJobId} <- avatureId=${avatureId}`);
+  }
+  if (updated) writeData(data);
+  console.log(`[callback] sync-jobs recordsWithHrisIdField=${records.length} updated=${updated} errors=${errors.length}`);
+  return { updated, errors };
+}
+
+app.all("/callback/:operation", async (req, res) => {
+  const operation = req.params.operation;
+  if (!CALLBACK_OPERATIONS.has(operation)) {
+    return res.status(404).json({ error: `Unknown callback operation '${operation}'` });
+  }
+  const receivedAt = new Date().toISOString();
+  const bodyPreview = JSON.stringify(req.body || {}).slice(0, 2000);
+  console.log(
+    `[callback] ${req.method} /callback/${operation} at=${receivedAt} query=${JSON.stringify(req.query)} body=${bodyPreview}`
+  );
+  if (operation === "sync-jobs") {
+    const rawBody = typeof req.rawBody === "string" ? req.rawBody : "";
+    console.log(
+      `[callback] sync-jobs debug ct="${req.headers["content-type"] || "(none)"}" rawBody=${rawBody.slice(0, 10000)} parsedBody=${bodyPreview.slice(0, 10000)}`
+    );
+  }
+  const response = { ok: true, operation, method: req.method, receivedAt };
+  if (operation === "sync-jobs") {
+    try {
+      const result = applyJobAvatureIds(req.body || {});
+      response.updated = result.updated;
+      if (result.errors.length) response.errors = result.errors;
+      if (result.updated) console.log(`[callback] sync-jobs updated ${result.updated} job(s) with Avature ids`);
+    } catch (err) {
+      console.error(`[callback] sync-jobs processing failed: ${err.message}`);
+      response.ok = false;
+      response.errors = [err.message];
+    }
+  }
+  res.json(response);
+});
+
 app.use(flowRouter);
 
 const EMPLOYMENT_STATUSES = ["Hired", "Ex Employee"];

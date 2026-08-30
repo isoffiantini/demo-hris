@@ -80,6 +80,22 @@ GET /health
 
 Respuesta: `{ "status": "ok" }` usado para validar la conexión desde Apache NiFi (InvokeHTTP).
 
+## Sincronización con Avature (UI) y callbacks
+
+Las páginas **Jobs**, **Departments** y **Locations** tienen un botón **Sync With Avature** (arriba a la derecha) que hace `POST` (JSON `{ "operation": "<op>" }`) al HTTP trigger de Avature, y muestran la **callback URL** correspondiente con un botón **Copy**:
+
+| Operación | Trigger del botón | Callback URL |
+| --- | --- | --- |
+| `sync_jobs` | `GET /sync-jobs` | `{base}/callback/sync-jobs` |
+| `sync_departments` | `GET /sync-departments` | `{base}/callback/sync-departments` |
+| `sync_locations` | `GET /sync-locations` | `{base}/callback/sync-locations` |
+
+Los triggers (`/sync-*`) están configurados por `JUNCTION_SYNC_URL` (por defecto `https://junctiontraining.avature.net/junction/endpoint/NKs4quRQCujidlzZadG4RKPlAryAbPinTAJY9bs6/`). La callback URL se construye con el origin actual de la app (ej. `https://moccasin-cattle-483922.hostingersite.com/callback/sync-jobs`).
+
+Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use al terminar el import), responden `200 { "ok": true, "operation", "method", "receivedAt" }` y loguean query + body recibidos. Operaciones no reconocidas → `404`.
+
+**Callback `sync-jobs`:** el body del POST puede venir como array directo o envuelto (`results`, `data`, etc.). Por cada registro que tenga `id` (id del job en Avature) y `schemaField_837_5_35914` (id del job en el HRIS), se actualiza el job interno del HRIS agregándole el campo `avatureId`. La respuesta incluye `updated` y `errors` (jobs no encontrados o sin id) si los hay.
+
 ## Integraciones
 
 Endpoints de integración viven en `integrations/` (router `integrations/flow.js`).

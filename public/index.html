@@ -49,6 +49,7 @@
     .topbar { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
     .topbar h1 { font-size: 22px; color: #16324f; }
     .top-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+    .callback-url { font-family: monospace; font-size: 11px; color: #16324f; background: #eef2f6; border: 1px solid #d9e0e7; padding: 4px 8px; border-radius: 5px; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .subtitle { color: #52606d; font-size: 14px; }
 
     .card {
@@ -327,6 +328,14 @@
       return `<div class="topbar"><h1>${title}</h1>${subtitle ? `<span class="subtitle">${subtitle}</span>` : ""}${actions ? `<div class="top-actions">${actions}</div>` : ""}</div>`;
     }
 
+    function syncActions(op, btnId, handler) {
+      const url = `${location.origin}/callback/${op}`;
+      return `
+        <code class="callback-url" id="cb-${op}">${esc(url)}</code>
+        <button class="btn" onclick="copyText('cb-${op}')">Copy</button>
+        <button id="${btnId}" class="btn primary" onclick="${handler}()">Sync With Avature</button>`;
+    }
+
     function homeView() {
       return `
         <div class="card welcome">
@@ -391,7 +400,7 @@
 
     function jobsListView() {
       return `
-        ${pageTitle("Jobs", "Manage your jobs", '<button id="sync-jobs-btn" class="btn primary" onclick="syncJobs()">Sync With Avature</button>')}
+        ${pageTitle("Jobs", "Manage your jobs", syncActions("sync-jobs", "sync-jobs-btn", "syncJobs"))}
         <div class="card">
           <div class="card-header">
             <h2>Jobs</h2>
@@ -413,7 +422,7 @@
 
     function departmentsListView() {
       return `
-        ${pageTitle("Departments", "Browse your departments", '<button id="sync-departments-btn" class="btn primary" onclick="syncDepartments()">Sync With Avature</button>')}
+        ${pageTitle("Departments", "Browse your departments", syncActions("sync-departments", "sync-departments-btn", "syncDepartments"))}
         <div class="card">
           <div class="card-header">
             <h2>Departments</h2>
@@ -432,7 +441,7 @@
 
     function locationsListView() {
       return `
-        ${pageTitle("Locations", "Browse your locations", '<button id="sync-avature-btn" class="btn primary" onclick="syncWithAvature()">Sync With Avature</button>')}
+        ${pageTitle("Locations", "Browse your locations", syncActions("sync-locations", "sync-avature-btn", "syncWithAvature"))}
         <div class="card">
           <div class="card-header">
             <h2>Locations</h2>
@@ -1026,6 +1035,18 @@
 
     function syncJobs() {
       triggerSync("/sync-jobs", "sync-jobs-btn");
+    }
+
+    async function copyText(id) {
+      const el = document.getElementById(id);
+      const text = el ? el.textContent.trim() : "";
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Callback URL copied.");
+      } catch (err) {
+        showToast(`Copy failed: ${err.message}. URL: ${text}`, "error");
+      }
     }
 
     async function loadData() {
