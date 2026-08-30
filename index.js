@@ -153,7 +153,7 @@ function applyJobAvatureIds(body) {
   const errors = [];
   for (const record of records) {
     const hrisJobId = Number(fieldValue(record[JOB_HRIS_ID_FIELD]));
-    const avatureId = Number(record.id);
+    const avatureId = Number(fieldValue(record.id));
     if (!Number.isFinite(hrisJobId) || hrisJobId <= 0) {
       errors.push(`record ${JSON.stringify(record.id)} has invalid ${JOB_HRIS_ID_FIELD}`);
       continue;
@@ -267,7 +267,24 @@ function validateJob(body, partial) {
   if (body.locationId !== undefined && !Number.isInteger(body.locationId)) {
     errors.push("locationId must be a positive integer");
   }
+  if (
+    body.avatureId !== undefined &&
+    body.avatureId !== null &&
+    body.avatureId !== ""
+  ) {
+    const av = Number(body.avatureId);
+    if (!Number.isInteger(av) || av <= 0) {
+      errors.push("avatureId must be a positive integer");
+    }
+  }
   return errors;
+}
+
+function normalizeJobInput(body) {
+  if (!("avatureId" in body)) return body;
+  const value = body.avatureId;
+  if (value === undefined || value === null || value === "") return { ...body, avatureId: null };
+  return { ...body, avatureId: Number(value) };
 }
 
 function validateDepartment(body, partial) {
@@ -536,7 +553,7 @@ app.post("/jobs", (req, res) => {
   if (!loc) {
     return res.status(400).json({ errors: ["locationId references a location that does not exist"] });
   }
-  const job = { id: nextId(data.jobs), ...req.body };
+  const job = { id: nextId(data.jobs), ...normalizeJobInput(req.body) };
   data.jobs.push(job);
   writeData(data);
   res.status(201).json(serializeJob(job));
@@ -556,7 +573,7 @@ app.patch("/jobs/:id", (req, res) => {
   if (!data.locations.find((l) => l.id === locationId)) {
     return res.status(400).json({ errors: ["locationId references a location that does not exist"] });
   }
-  const updated = applyPartial(entity, req.body);
+  const updated = applyPartial(entity, normalizeJobInput(req.body));
   data.jobs = data.jobs.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);
   res.json(serializeJob(updated));

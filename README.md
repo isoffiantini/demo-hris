@@ -16,6 +16,8 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 
 **Job** (campos obligatorios): `name`, `description`, `departmentId` (referencia al department), `status` (`open` | `closed`), `employmentType` (`Remote` | `On-site`), `locationId` (referencia al location).
 
+El campo opcional `avatureId` (entero positivo) guarda el id del job en Avature; se puede enviar al crear/editar un job (se acepta `null`/vacío para limpiarlo) y aparece en la UI (tabla, detalle y formulario de edición).
+
 **Department**: `id`, `name`, `description` (breve descripción del área).
 
 **Location**: `id`, `country`, `state` (ej. `Spain` / `Barcelona`).
@@ -82,7 +84,7 @@ Respuesta: `{ "status": "ok" }` usado para validar la conexión desde Apache NiF
 
 ## Sincronización con Avature (UI) y callbacks
 
-Las páginas **Jobs**, **Departments** y **Locations** tienen un botón **Sync With Avature** (arriba a la derecha) que hace `POST` (JSON `{ "operation": "<op>" }`) al HTTP trigger de Avature, y muestran la **callback URL** correspondiente con un botón **Copy**:
+Las páginas **Jobs**, **Departments** y **Locations** tienen un botón **Sync With Avature** (arriba a la derecha) que hace `POST` (JSON `{ "operation": "<op>" }`) al HTTP trigger de Avature:
 
 | Operación | Trigger del botón | Callback URL |
 | --- | --- | --- |
