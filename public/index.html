@@ -614,9 +614,10 @@
       return `<label>${label} <input name="${name}" type="${type}" value="${esc(val)}" required /></label>`;
     }
 
-    function fieldOptional(name, label, entity, type = "text") {
+    function fieldOptional(name, label, entity, type = "text", readonly = false) {
       const val = entity && entity[name] !== undefined && entity[name] !== null ? entity[name] : "";
-      return `<label>${label} <input name="${name}" type="${type}" value="${esc(val)}" /></label>`;
+      const ro = readonly ? " readonly" : "";
+      return `<label>${label} <input name="${name}" type="${type}" value="${esc(val)}"${ro} /></label>`;
     }
 
     // ---------- router ----------
