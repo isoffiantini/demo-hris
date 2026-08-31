@@ -83,6 +83,10 @@ const JUNCTION_SYNC_URL =
   process.env.JUNCTION_SYNC_URL ||
   "https://junctiontraining.avature.net/junction/endpoint/NKs4quRQCujidlzZadG4RKPlAryAbPinTAJY9bs6/";
 
+const JUNCTION_REHIRE_URL =
+  process.env.JUNCTION_REHIRE_URL ||
+  "https://junctiontraining.avature.net/junction/endpoint/-AN1TFDhSzXj-OpK_uch0Pf4q27KZ3lddmpWHCTo/";
+
 async function performSync(operation, res) {
   const started = Date.now();
   try {
@@ -112,6 +116,33 @@ app.get("/sync-locations", (req, res) => performSync("sync_locations", res));
 app.get("/sync-departments", (req, res) => performSync("sync_departments", res));
 
 app.get("/sync-jobs", (req, res) => performSync("sync_jobs", res));
+
+app.post("/notify-rehire", async (req, res) => {
+  const { employee } = req.body || {};
+  const started = Date.now();
+  const payload = {
+    employeeType: "ex employee",
+    notes: (employee && employee.whyExEmployee) || "",
+    rehireEligible: !!(employee && employee.rehireEligible),
+    date: new Date().toISOString().slice(0, 10),
+  };
+  try {
+    const upstream = await fetch(JUNCTION_REHIRE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000),
+    });
+    const text = await upstream.text().catch(() => "");
+    console.log(
+      `[rehire] POST ${JUNCTION_REHIRE_URL} payload=${JSON.stringify(payload)} -> ${upstream.status} (${Date.now() - started}ms, ${text.length} bytes)`
+    );
+    res.json({ ok: upstream.ok, status: upstream.status, body: text.slice(0, 2000), payload });
+  } catch (err) {
+    console.error(`[rehire] POST failed: ${err.message}`);
+    res.status(502).json({ errors: [`Rehire notification failed: ${err.message}`] });
+  }
+});
 
 const CALLBACK_OPERATIONS = new Set(["sync-locations", "sync-departments", "sync-jobs"]);
 
@@ -290,7 +321,34 @@ function validateEmployee(body, partial) {
   ) {
     errors.push("department cannot be empty");
   }
+  if (
+    body.whyExEmployee !== undefined &&
+    body.whyExEmployee !== null &&
+    String(body.whyExEmployee).trim() === ""
+  ) {
+    errors.push("whyExEmployee cannot be empty");
+  }
+  if (
+    body.rehireEligible !== undefined &&
+    body.rehireEligible !== null &&
+    typeof body.rehireEligible !== "boolean"
+  ) {
+    errors.push("rehireEligible must be a boolean");
+  }
   return errors;
+}
+
+function normalizeEmployeeInput(body) {
+  let out = body;
+  if ("whyExEmployee" in out) {
+    const v = out.whyExEmployee;
+    out = { ...out, whyExEmployee: v === undefined || v === null || v === "" ? null : String(v).trim() };
+  }
+  if ("rehireEligible" in out) {
+    const v = out.rehireEligible;
+    out = { ...out, rehireEligible: v === undefined || v === null ? false : !!v };
+  }
+  return out;
 }
 
 function validateJob(body, partial) {
@@ -500,38 +558,40 @@ app.get("/employees/:id", (req, res) => {
 });
 
 app.post("/employees", (req, res) => {
-  if (handleErrors(validateEmployee(req.body, false), res)) return;
+  const body = normalizeEmployeeInput(req.body);
+  if (handleErrors(validateEmployee(body, false), res)) return;
   const data = readData();
-  const job = data.jobs.find((j) => j.id === req.body.jobId);
+  const job = data.jobs.find((j) => j.id === body.jobId);
   if (!job) {
     return res.status(400).json({ errors: ["jobId references a job that does not exist"] });
   }
   const department = jobDepartment(job);
-  if (req.body.department !== undefined && req.body.department !== department) {
+  if (body.department !== undefined && body.department !== department) {
     return res.status(400).json({ errors: ["department must match the department of the assigned job"] });
   }
-  const employee = { id: nextId(data.employees), ...req.body, department };
+  const employee = { id: nextId(data.employees), ...body, department };
   data.employees.push(employee);
   writeData(data);
   res.status(201).json(employee);
 });
 
 app.patch("/employees/:id", (req, res) => {
-  if (handleErrors(validateEmployee(req.body, true), res)) return;
+  const body = normalizeEmployeeInput(req.body);
+  if (handleErrors(validateEmployee(body, true), res)) return;
   const { data, entity } = getEntity("employees", req.params.id);
   if (!entity) {
     return res.status(404).json({ error: "Employee not found" });
   }
-  const jobId = req.body.jobId !== undefined ? req.body.jobId : entity.jobId;
+  const jobId = body.jobId !== undefined ? body.jobId : entity.jobId;
   const job = data.jobs.find((j) => j.id === jobId);
   if (!job) {
     return res.status(400).json({ errors: ["jobId references a job that does not exist"] });
   }
   const department = jobDepartment(job);
-  if (req.body.department !== undefined && req.body.department !== department) {
+  if (body.department !== undefined && body.department !== department) {
     return res.status(400).json({ errors: ["department must match the department of the assigned job"] });
   }
-  const updated = { ...applyPartial(entity, req.body), department };
+  const updated = { ...applyPartial(entity, body), department };
   data.employees = data.employees.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);
   res.json(updated);

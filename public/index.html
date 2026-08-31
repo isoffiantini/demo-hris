@@ -68,6 +68,8 @@
     .card-header h2 { margin-bottom: 0; }
     form { display: flex; flex-direction: column; gap: 12px; max-width: 460px; }
     label { display: flex; flex-direction: column; font-size: 13px; color: #52606d; gap: 4px; }
+    label.checkbox { flex-direction: row; align-items: center; gap: 8px; }
+    label.checkbox input { width: auto; }
     input, select {
       padding: 9px 10px;
       border: 1px solid #cbd2d9;
@@ -785,11 +787,23 @@
                 ${field("lastName", "Last name", e)}
                 ${field("email", "Email", e, "email")}
                 ${field("phoneNumber", "Phone number", e)}
+                <input type="hidden" id="prev-status" value="${esc(e.employmentStatus)}" />
+                <input type="hidden" id="prev-why" value="${esc(e.whyExEmployee || "")}" />
+                <input type="hidden" id="prev-rehire" value="${e.rehireEligible ? "true" : "false"}" />
                 <label>Employment status
-                  <select name="employmentStatus" required>
+                  <select name="employmentStatus" required onchange="toggleExEmployeeFields()">
                     ${employmentStatusOptions(e.employmentStatus)}
                   </select>
                 </label>
+                <div id="ex-employee-fields" style="display:none">
+                  <label>Why Ex Employee
+                    <input name="whyExEmployee" type="text" placeholder="e.g. Voluntary resignation" value="${esc(e.whyExEmployee || "")}" />
+                  </label>
+                  <label class="checkbox">
+                    <input name="rehireEligible" type="checkbox" ${e.rehireEligible ? "checked" : ""} />
+                    Rehire eligible
+                  </label>
+                </div>
                 <label>Hire date <input name="hireDate" type="date" value="${esc(e.hireDate)}" required /></label>
                 <label>Job (related)
                   <select name="jobId" id="job-select" required></select>
@@ -803,6 +817,7 @@
             </div>`;
           document.getElementById("entity-form").addEventListener("submit", submitForm);
           await populateJobSelect(e.jobId);
+          toggleExEmployeeFields();
           return;
         }
         app.innerHTML = `
@@ -818,6 +833,10 @@
             <div class="detail-row"><span class="k">Email</span><span class="v">${esc(e.email)}</span></div>
             <div class="detail-row"><span class="k">Phone</span><span class="v">${esc(e.phoneNumber)}</span></div>
             <div class="detail-row"><span class="k">Employment status</span><span class="v">${employmentStatusBadge(e.employmentStatus)}</span></div>
+            ${e.employmentStatus === "Ex Employee" ? `
+              <div class="detail-row"><span class="k">Why Ex Employee</span><span class="v">${esc(e.whyExEmployee || "—")}</span></div>
+              <div class="detail-row"><span class="k">Rehire eligible</span><span class="v">${e.rehireEligible ? "Yes" : "No"}</span></div>
+            ` : ""}
             <div class="detail-row"><span class="k">Hire date</span><span class="v">${esc(e.hireDate)}</span></div>
             <div class="detail-row"><span class="k">Department</span><span class="v">${esc(e.department)}</span></div>
             <div class="detail-row"><span class="k">Job</span><span class="v">${jobName(e.jobId)}</span></div>
@@ -942,12 +961,30 @@
       render();
     }
 
+    function toggleExEmployeeFields() {
+      const wrapper = document.getElementById("ex-employee-fields");
+      if (!wrapper) return;
+      const statusSelect = wrapper.closest("form").querySelector("select[name=employmentStatus]");
+      const status = statusSelect ? statusSelect.value : "";
+      wrapper.style.display = status === "Ex Employee" ? "block" : "none";
+      if (status !== "Ex Employee") {
+        const why = wrapper.querySelector("[name=whyExEmployee]");
+        const rehire = wrapper.querySelector("[name=rehireEligible]");
+        if (why) why.value = "";
+        if (rehire) rehire.checked = false;
+      }
+    }
+
     async function submitForm(e) {
       e.preventDefault();
       const form = e.target;
       const type = formType();
       const id = formId();
       const isEdit = id != null;
+
+      const prevStatus = document.getElementById("prev-status") ? document.getElementById("prev-status").value : null;
+      const prevWhy = document.getElementById("prev-why") ? document.getElementById("prev-why").value : "";
+      const prevRehire = document.getElementById("prev-rehire") ? document.getElementById("prev-rehire").value : "false";
 
       const body = type === "job" ? {
         name: form.name.value.trim(),
@@ -965,6 +1002,8 @@
         jobId: Number(form.jobId.value),
         employmentStatus: form.employmentStatus.value,
         hireDate: form.hireDate.value,
+        whyExEmployee: form.whyExEmployee ? form.whyExEmployee.value.trim() : null,
+        rehireEligible: form.rehireEligible ? form.rehireEligible.checked : false,
       };
 
       const path = isEdit ? `/${type}s/${id}` : `/${type}s`;
@@ -976,11 +1015,29 @@
       }
       await loadData();
       if (isEdit) {
+        if (type === "employee" && body.employmentStatus === "Hired" && prevStatus === "Ex Employee") {
+          notifyRehire(data, prevWhy, prevRehire);
+        }
         showToast(type === "job" ? "Job updated." : "Employee updated.");
         location.hash = type === "job" ? `#/jobs/${id}` : `#/people/${id}`;
       } else {
         showToast(type === "job" ? "Job created successfully." : "Employee created successfully.");
         location.hash = type === "job" ? "#/jobs" : "#/people";
+      }
+    }
+
+    async function notifyRehire(employee, prevWhy, prevRehire) {
+      const { res, data } = await api("/notify-rehire", "POST", {
+        employee: {
+          ...employee,
+          whyExEmployee: prevWhy,
+          rehireEligible: prevRehire,
+        },
+      });
+      if (res.ok) {
+        showToast(`Rehire notification sent (HTTP ${data.status}).`);
+      } else {
+        showToast(`Rehire notification failed: ${extractErrors(data)}`, "error");
       }
     }
 

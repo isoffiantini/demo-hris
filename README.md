@@ -14,6 +14,8 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 
 **Employee** (campos obligatorios): `firstName`, `lastName`, `email`, `phoneNumber`, `jobId` (referencia al job), `employmentStatus`, `hireDate`. El campo `department` se deriva automáticamente del job asignado y no puede diferir del mismo.
 
+Campos opcionales específicos del estado **Ex Employee**: `whyExEmployee` (string, motivo de la salida) y `rehireEligible` (boolean, si es elegible para re-contratar). En la UI aparecen en el formulario de edición sólo cuando el estado es `Ex Employee` y se muestran en el detalle del empleado.
+
 Los valores permitidos de `employmentStatus` son configurables con la variable de entorno `EMPLOYMENT_STATUSES` (pares `value:Label` separados por coma). Por defecto: `Hired:Hired,Ex Employee:Ex Employee`. Ejemplo: `EMPLOYMENT_STATUSES=Hired:Activo,Ex Employee:Ex Empleado,On Leave:Licencia`. El listado configurable alimenta la validación, el filtro y el select de la UI, y define el valor por defecto que aplica el flow de Avature (el primero de la lista).
 
 **Job** (campos obligatorios): `name`, `description`, `departmentId` (referencia al department), `status` (`open` | `closed`), `employmentType` (`Remote` | `On-site`), `locationId` (referencia al location).
@@ -99,6 +101,19 @@ Los triggers (`/sync-*`) están configurados por `JUNCTION_SYNC_URL` (por defect
 Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use al terminar el import), responden `200 { "ok": true, "operation", "method", "receivedAt" }` y loguean query + body recibidos. Operaciones no reconocidas → `404`.
 
 **Callback `sync-jobs`:** Avature envía el aviso del import como `multipart/form-data` (campos `result`, `processedCount`, `successfulCount`, `warningCount`, `failedCount`, `error`, `importerProcessId`, `entityProperties`). El servidor parsea `entityProperties` (JSON con los registros importados): por cada registro que tenga `id` (id del job en Avature) y `schemaField_837_5_35914` (id del job en el HRIS), se actualiza el job interno del HRIS agregándole el campo `avatureId`. La respuesta incluye `updated` y `errors` (jobs no encontrados, sin id, etc.) si los hay. También acepta un body JSON directo (array o envuelto) con los mismos campos.
+
+**Notificación de re-contratación:** al editar un empleado y cambiar su estado de `Ex Employee` a `Hired`, la UI hace `POST /notify-rehire` (proxy del servidor) que envía `POST` al endpoint JUNCTION configurado en `JUNCTION_REHIRE_URL` (por defecto `https://junctiontraining.avature.net/junction/endpoint/-AN1TFDhSzXj-OpK_uch0Pf4q27KZ3lddmpWHCTo/`) con el payload JSON:
+
+```json
+{
+  "employeeType": "ex employee",
+  "notes": "<whyExEmployee>",
+  "rehireEligible": true,
+  "date": "YYYY-MM-DD"
+}
+```
+
+`date` es la fecha actual del servidor en que se hace la edición. `notes` y `rehireEligible` toman los valores que tenía el empleado antes del cambio (motivo de salida y elegibilidad guardados).
 
 ## Integraciones
 
