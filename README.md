@@ -104,7 +104,7 @@ Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use 
 
 **Callback `sync-jobs`:** Avature envía el aviso del import como `multipart/form-data` (campos `result`, `processedCount`, `successfulCount`, `warningCount`, `failedCount`, `error`, `importerProcessId`, `entityProperties`). El servidor parsea `entityProperties` (JSON con los registros importados): por cada registro que tenga `id` (id del job en Avature) y `schemaField_837_5_35914` (id del job en el HRIS), se actualiza el job interno del HRIS agregándole el campo `avatureId`. La respuesta incluye `updated` y `errors` (jobs no encontrados, sin id, etc.) si los hay. También acepta un body JSON directo (array o envuelto) con los mismos campos.
 
-**Notificación de re-contratación:** al editar un empleado y cambiar su estado de `Ex Employee` a `Hired`, la UI hace `POST /notify-rehire` (proxy del servidor) que envía `POST` al endpoint JUNCTION configurado en `JUNCTION_REHIRE_URL` (por defecto `https://junctiontraining.avature.net/junction/endpoint/-AN1TFDhSzXj-OpK_uch0Pf4q27KZ3lddmpWHCTo/`) con el payload JSON:
+**Notificación de ex-empleado:** al editar un empleado y cambiarlo **a** `Ex Employee` (única vez, es decir pasando desde otro estado) y que el empleado tenga id de Avature (`avaturePersonId`), la UI hace `POST /notify-rehire` (proxy del servidor) que envía `POST` al endpoint JUNCTION configurado en `JUNCTION_REHIRE_URL` (por defecto `https://junctiontraining.avature.net/junction/endpoint/-AN1TFDhSzXj-OpK_uch0Pf4q27KZ3lddmpWHCTo/`) con el payload JSON:
 
 ```json
 {
@@ -116,7 +116,7 @@ Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use 
 }
 ```
 
-`date` es la fecha actual del servidor en que se hace la edición. `notes` y `rehireEligible` toman los valores que tenía el empleado antes del cambio (motivo de salida y elegibilidad guardados). `avatureId` es el id del empleado en Avature (`avaturePersonId`), o `null` si no está asignado.
+`date` es la fecha actual del servidor en que se hace la edición. `notes` y `rehireEligible` toman los valores ingresados en el formulario (motivo de salida y elegibilidad). `avatureId` es el id del empleado en Avature (`avaturePersonId`), o `null` si no está asignado. El proxy espera la respuesta del endpoint con `JUNCTION_REHIRE_TIMEOUT_MS` (por defecto `75000`, ya que el endpoint de Avature puede tardar en responder y devolver `503` por timeout propio).
 
 ## Integraciones
 

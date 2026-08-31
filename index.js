@@ -87,6 +87,8 @@ const JUNCTION_REHIRE_URL =
   process.env.JUNCTION_REHIRE_URL ||
   "https://junctiontraining.avature.net/junction/endpoint/-AN1TFDhSzXj-OpK_uch0Pf4q27KZ3lddmpWHCTo/";
 
+const JUNCTION_REHIRE_TIMEOUT_MS = Number(process.env.JUNCTION_REHIRE_TIMEOUT_MS || 75000);
+
 async function performSync(operation, res) {
   const started = Date.now();
   try {
@@ -132,7 +134,7 @@ app.post("/notify-rehire", async (req, res) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(JUNCTION_REHIRE_TIMEOUT_MS),
     });
     const text = await upstream.text().catch(() => "");
     console.log(

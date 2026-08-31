@@ -1023,8 +1023,8 @@
       await loadData();
       if (isEdit) {
         const hasAvatureId = prevAvatureId != null && prevAvatureId !== "" && prevAvatureId !== "null";
-        if (type === "employee" && body.employmentStatus === "Hired" && prevStatus === "Ex Employee" && hasAvatureId) {
-          notifyRehire(data, prevWhy, prevRehire, prevAvatureId);
+        if (type === "employee" && body.employmentStatus === "Ex Employee" && prevStatus !== "Ex Employee" && hasAvatureId) {
+          notifyRehire(data, data.whyExEmployee, data.rehireEligible, prevAvatureId);
         }
         showToast(type === "job" ? "Job updated." : "Employee updated.");
         location.hash = type === "job" ? `#/jobs/${id}` : `#/people/${id}`;
