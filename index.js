@@ -119,6 +119,15 @@ app.get("/sync-departments", (req, res) => performSync("sync_departments", res))
 
 app.get("/sync-jobs", (req, res) => performSync("sync_jobs", res));
 
+function rehireFormId(employee) {
+  if (!employee) return null;
+  const syncId = employee.avatureSyncFormId;
+  if (syncId !== undefined && syncId !== null && syncId !== "") return syncId;
+  const fallback = employee.hrisFormId;
+  if (fallback !== undefined && fallback !== null && fallback !== "") return fallback;
+  return null;
+}
+
 app.post("/notify-rehire", async (req, res) => {
   const { employee } = req.body || {};
   const started = Date.now();
@@ -128,6 +137,8 @@ app.post("/notify-rehire", async (req, res) => {
     notes: (employee && employee.whyExEmployee) || "",
     rehireEligible: !!(employee && employee.rehireEligible),
     date: new Date().toISOString().slice(0, 10),
+    applicationId: (employee && employee.applicationId) || null,
+    hrisFormId: rehireFormId(employee),
   };
   try {
     const upstream = await fetch(JUNCTION_REHIRE_URL, {

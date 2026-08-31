@@ -138,6 +138,7 @@ function formBody(personId, fields) {
     "HRIS URL": fields.hrisUrl || null,
     "Sync Details": String(fields.syncDetails ?? "Success"),
     "Last Synced": String(fields.lastSynced ?? ""),
+    "Is Hired?": "Yes",
   };
 }
 
@@ -244,7 +245,8 @@ async function patchFormAt(personId, formId, fields, baseUrlOverride) {
   if (!patch.res.ok) {
     throw new Error(`hrisSync PATCH failed: ${patch.res.status} ${patch.text}`);
   }
-  return { action: "patched", status: patch.res.status, formId };
+  const responseId = extractFormId(parseJson(patch.text));
+  return { action: "patched", status: patch.res.status, formId: responseId === null ? formId : responseId };
 }
 
 function compoundApplicationUrl(applicationId) {

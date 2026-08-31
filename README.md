@@ -112,11 +112,13 @@ Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use 
   "avatureId": 4156,
   "notes": "<whyExEmployee>",
   "rehireEligible": true,
-  "date": "YYYY-MM-DD"
+  "date": "YYYY-MM-DD",
+  "applicationId": "app-123",
+  "hrisFormId": "form-abc"
 }
 ```
 
-`date` es la fecha actual del servidor en que se hace la edición. `notes` y `rehireEligible` toman los valores ingresados en el formulario (motivo de salida y elegibilidad). `avatureId` es el id del empleado en Avature (`avaturePersonId`), o `null` si no está asignado. El proxy espera la respuesta del endpoint con `JUNCTION_REHIRE_TIMEOUT_MS` (por defecto `75000`, ya que el endpoint de Avature puede tardar en responder y devolver `503` por timeout propio).
+`date` es la fecha actual del servidor en que se hace la edición. `notes` y `rehireEligible` toman los valores ingresados en el formulario (motivo de salida y elegibilidad). `avatureId` es el id del empleado en Avature (`avaturePersonId`), o `null` si no está asignado. `applicationId` es el valor persistido al crear el empleado. `hrisFormId` es el `id` devuelto por el `POST`/`PATCH` al crear o actualizar el form de sincronización (la respuesta es `{ "id": N }`; se persiste en el empleado como `avatureSyncFormId` y se envía tal cual en el payload, incluyendo `0`); si ese id no está disponible, usa como fallback el `hris_form_id` recibido en la request de creación. El proxy espera la respuesta del endpoint con `JUNCTION_REHIRE_TIMEOUT_MS` (por defecto `75000`, ya que el endpoint de Avature puede tardar en responder y devolver `503` por timeout propio).
 
 ## Integraciones
 
@@ -147,6 +149,8 @@ POST /flow_create_employee
 Crea (o actualiza) el empleado en el HRIS y registra la ejecución del flow en la API de Junction Events.
 
 **Input:** el payload de Avature (`{ "properties": { ... } }`) con `firstName`, `lastName`, `email`, `phone`, `job_hris_id`, y opcionalmente `recordId`. Opcional: `application_id` (id del compound record `compoundRecords_8` / aplicación), usado para mover al candidato al siguiente paso del workflow (ver abajo).
+
+Los campos `application_id` y `hris_form_id` (de `properties`) se **persisten** en el registro del empleado (`applicationId` / `hrisFormId`) pero **no se muestran en la UI**. Además, al crear/actualizar el form de sincronización se persiste en el empleado el id real devuelto por ese `POST`/`PATCH` (`avatureSyncFormId`). Estos valores se reutilizan después en el payload del endpoint de ex-empleado (ver sección anterior).
 
 **Headers relevantes:**
 - `Avature-Tracking-Code` (o `Tracking-Code`, `X-Tracking-Code`): identifica la ejecución y se reenvía en los logs de Junction Events. Si no llega, no se envían logs.

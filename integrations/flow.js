@@ -32,7 +32,14 @@ function toEmployeePayload(payload) {
       ? props.employmentStatus
       : EMPLOYMENT_STATUS_VALUES[0],
     hireDate: props.hireDate || new Date().toISOString().slice(0, 10),
+    applicationId: normalizeStr(props.application_id) || normalizeStr(props.applicationId),
+    hrisFormId: normalizeStr(props.hris_form_id) || normalizeStr(props.hrisFormId),
   };
+}
+
+function normalizeStr(value) {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
 }
 
 function departmentForJob(data, jobId) {
