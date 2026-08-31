@@ -16,6 +16,8 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 
 Campos opcionales específicos del estado **Ex Employee**: `whyExEmployee` (string, motivo de la salida) y `rehireEligible` (boolean, si es elegible para re-contratar). En la UI aparecen en el formulario de edición sólo cuando el estado es `Ex Employee` y se muestran en el detalle del empleado.
 
+**Avature ID del empleado** (`avaturePersonId`, entero positivo opcional): guarda el id de la persona en Avature. Se asigna automáticamente al crear/actualizar el empleado desde el flow de Avature (`/flow_create_employee`, tomado del `recordId` de la request) y también se acepta manualmente al crear/editar por la API y la UI (campo "Avature ID"; aparece en la tabla, el detalle y el formulario).
+
 Los valores permitidos de `employmentStatus` son configurables con la variable de entorno `EMPLOYMENT_STATUSES` (pares `value:Label` separados por coma). Por defecto: `Hired:Hired,Ex Employee:Ex Employee`. Ejemplo: `EMPLOYMENT_STATUSES=Hired:Activo,Ex Employee:Ex Empleado,On Leave:Licencia`. El listado configurable alimenta la validación, el filtro y el select de la UI, y define el valor por defecto que aplica el flow de Avature (el primero de la lista).
 
 **Job** (campos obligatorios): `name`, `description`, `departmentId` (referencia al department), `status` (`open` | `closed`), `employmentType` (`Remote` | `On-site`), `locationId` (referencia al location).
@@ -107,13 +109,14 @@ Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use 
 ```json
 {
   "employeeType": "ex employee",
+  "avatureId": 4156,
   "notes": "<whyExEmployee>",
   "rehireEligible": true,
   "date": "YYYY-MM-DD"
 }
 ```
 
-`date` es la fecha actual del servidor en que se hace la edición. `notes` y `rehireEligible` toman los valores que tenía el empleado antes del cambio (motivo de salida y elegibilidad guardados).
+`date` es la fecha actual del servidor en que se hace la edición. `notes` y `rehireEligible` toman los valores que tenía el empleado antes del cambio (motivo de salida y elegibilidad guardados). `avatureId` es el id del empleado en Avature (`avaturePersonId`), o `null` si no está asignado.
 
 ## Integraciones
 

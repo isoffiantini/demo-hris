@@ -122,6 +122,7 @@ app.post("/notify-rehire", async (req, res) => {
   const started = Date.now();
   const payload = {
     employeeType: "ex employee",
+    avatureId: (employee && employee.avaturePersonId) || null,
     notes: (employee && employee.whyExEmployee) || "",
     rehireEligible: !!(employee && employee.rehireEligible),
     date: new Date().toISOString().slice(0, 10),
@@ -335,6 +336,16 @@ function validateEmployee(body, partial) {
   ) {
     errors.push("rehireEligible must be a boolean");
   }
+  if (
+    body.avaturePersonId !== undefined &&
+    body.avaturePersonId !== null &&
+    body.avaturePersonId !== ""
+  ) {
+    const ap = Number(body.avaturePersonId);
+    if (!Number.isInteger(ap) || ap <= 0) {
+      errors.push("avaturePersonId must be a positive integer");
+    }
+  }
   return errors;
 }
 
@@ -347,6 +358,13 @@ function normalizeEmployeeInput(body) {
   if ("rehireEligible" in out) {
     const v = out.rehireEligible;
     out = { ...out, rehireEligible: v === undefined || v === null ? false : !!v };
+  }
+  if ("avaturePersonId" in out) {
+    const v = out.avaturePersonId;
+    out = {
+      ...out,
+      avaturePersonId: v === undefined || v === null || v === "" ? null : Number(v),
+    };
   }
   return out;
 }

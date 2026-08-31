@@ -474,7 +474,7 @@
     function employeeTable(list) {
       if (!list.length) return '<div class="empty">No employees yet.</div>';
       return `<table>
-        <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th><th>Status</th><th>Hire date</th></tr></thead>
+        <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th><th>Status</th><th>Avature ID</th><th>Hire date</th></tr></thead>
         <tbody>
           ${list.map((e) => `<tr class="clickable" data-href="#/people/${e.id}">
             <td>${esc(e.firstName)}</td>
@@ -483,6 +483,7 @@
             <td>${esc(e.phoneNumber)}</td>
             <td>${jobName(e.jobId)}</td>
             <td>${employmentStatusBadge(e.employmentStatus)}</td>
+            <td>${e.avaturePersonId == null || e.avaturePersonId === "" ? "—" : esc(e.avaturePersonId)}</td>
             <td>${esc(e.hireDate)}</td>
           </tr>`).join("")}
         </tbody>
@@ -551,6 +552,7 @@
             ${field("lastName", "Last name", null)}
             ${field("email", "Email", null, "email")}
             ${field("phoneNumber", "Phone number", null)}
+            ${fieldOptional("avaturePersonId", "Avature ID", null, "number")}
             <label>Employment status
               <select name="employmentStatus" required>
                 ${employmentStatusOptions(null)}
@@ -787,7 +789,9 @@
                 ${field("lastName", "Last name", e)}
                 ${field("email", "Email", e, "email")}
                 ${field("phoneNumber", "Phone number", e)}
+                ${fieldOptional("avaturePersonId", "Avature ID", e, "number")}
                 <input type="hidden" id="prev-status" value="${esc(e.employmentStatus)}" />
+                <input type="hidden" id="prev-avature-id" value="${esc(e.avaturePersonId != null ? e.avaturePersonId : "")}" />
                 <input type="hidden" id="prev-why" value="${esc(e.whyExEmployee || "")}" />
                 <input type="hidden" id="prev-rehire" value="${e.rehireEligible ? "true" : "false"}" />
                 <label>Employment status
@@ -832,6 +836,7 @@
             </div>
             <div class="detail-row"><span class="k">Email</span><span class="v">${esc(e.email)}</span></div>
             <div class="detail-row"><span class="k">Phone</span><span class="v">${esc(e.phoneNumber)}</span></div>
+            <div class="detail-row"><span class="k">Avature ID</span><span class="v">${e.avaturePersonId == null || e.avaturePersonId === "" ? "—" : esc(e.avaturePersonId)}</span></div>
             <div class="detail-row"><span class="k">Employment status</span><span class="v">${employmentStatusBadge(e.employmentStatus)}</span></div>
             ${e.employmentStatus === "Ex Employee" ? `
               <div class="detail-row"><span class="k">Why Ex Employee</span><span class="v">${esc(e.whyExEmployee || "—")}</span></div>
@@ -983,6 +988,7 @@
       const isEdit = id != null;
 
       const prevStatus = document.getElementById("prev-status") ? document.getElementById("prev-status").value : null;
+      const prevAvatureId = document.getElementById("prev-avature-id") ? document.getElementById("prev-avature-id").value : "";
       const prevWhy = document.getElementById("prev-why") ? document.getElementById("prev-why").value : "";
       const prevRehire = document.getElementById("prev-rehire") ? document.getElementById("prev-rehire").value : "false";
 
@@ -1002,6 +1008,7 @@
         jobId: Number(form.jobId.value),
         employmentStatus: form.employmentStatus.value,
         hireDate: form.hireDate.value,
+        avaturePersonId: form.avaturePersonId && form.avaturePersonId.value.trim() ? Number(form.avaturePersonId.value) : null,
         whyExEmployee: form.whyExEmployee ? form.whyExEmployee.value.trim() : null,
         rehireEligible: form.rehireEligible ? form.rehireEligible.checked : false,
       };
@@ -1015,8 +1022,9 @@
       }
       await loadData();
       if (isEdit) {
-        if (type === "employee" && body.employmentStatus === "Hired" && prevStatus === "Ex Employee") {
-          notifyRehire(data, prevWhy, prevRehire);
+        const hasAvatureId = prevAvatureId != null && prevAvatureId !== "" && prevAvatureId !== "null";
+        if (type === "employee" && body.employmentStatus === "Hired" && prevStatus === "Ex Employee" && hasAvatureId) {
+          notifyRehire(data, prevWhy, prevRehire, prevAvatureId);
         }
         showToast(type === "job" ? "Job updated." : "Employee updated.");
         location.hash = type === "job" ? `#/jobs/${id}` : `#/people/${id}`;
@@ -1026,10 +1034,11 @@
       }
     }
 
-    async function notifyRehire(employee, prevWhy, prevRehire) {
+    async function notifyRehire(employee, prevWhy, prevRehire, prevAvatureId) {
       const { res, data } = await api("/notify-rehire", "POST", {
         employee: {
           ...employee,
+          avaturePersonId: prevAvatureId,
           whyExEmployee: prevWhy,
           rehireEligible: prevRehire,
         },
