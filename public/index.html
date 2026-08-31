@@ -819,6 +819,7 @@
                 </div>
               </form>
             </div>`;
+          document.getElementById("entity-form").addEventListener("submit", submitForm);
           await populateJobSelect(e.jobId);
           toggleExEmployeeFields();
           return;
@@ -879,6 +880,7 @@
                 </div>
               </form>
             </div>`;
+          document.getElementById("entity-form").addEventListener("submit", submitForm);
           await populateDepartmentSelect(j.department ? j.department.id : null);
           await populateLocationSelect(j.locationId);
           return;
