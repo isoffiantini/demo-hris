@@ -7,7 +7,7 @@ const { EMPLOYMENT_STATUS_VALUES } = require("../config");
 const router = express.Router();
 
 const RECORD_TYPE_EMPLOYEE = 2;
-const APPLICATION_STEP_HIRED = 563;
+const APPLICATION_STEP_HIRED = 564;
 
 const HRIS_BASE_URL = process.env.HRIS_BASE_URL || "https://moccasin-cattle-483922.hostingersite.com";
 
