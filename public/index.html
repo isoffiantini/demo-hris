@@ -552,7 +552,7 @@
             ${field("lastName", "Last name", null)}
             ${field("email", "Email", null, "email")}
             ${field("phoneNumber", "Phone number", null)}
-            ${fieldOptional("avaturePersonId", "Avature ID", null, "number")}
+            ${fieldOptional("avaturePersonId", "Avature ID", null, "number", true)}
             <label>Employment status
               <select name="employmentStatus" required>
                 ${employmentStatusOptions(null)}
@@ -600,7 +600,7 @@
                 <option value="closed">closed</option>
               </select>
             </label>
-            ${fieldOptional("avatureId", "Avature id", null, "number")}
+            ${fieldOptional("avatureId", "Avature id", null, "number", true)}
             <div class="form-actions">
               <button class="primary" type="submit">Create job</button>
               <a class="btn" href="#/jobs" style="border:1px solid #cbd2d9">Cancel</a>
@@ -616,8 +616,8 @@
 
     function fieldOptional(name, label, entity, type = "text", readonly = false) {
       const val = entity && entity[name] !== undefined && entity[name] !== null ? entity[name] : "";
-      const ro = readonly ? " readonly" : "";
-      return `<label>${label} <input name="${name}" type="${type}" value="${esc(val)}"${ro} /></label>`;
+      const attr = readonly ? " disabled" : "";
+      return `<label>${label} <input name="${name}" type="${type}" value="${esc(val)}"${attr} /></label>`;
     }
 
     // ---------- router ----------
@@ -790,7 +790,7 @@
                 ${field("lastName", "Last name", e)}
                 ${field("email", "Email", e, "email")}
                 ${field("phoneNumber", "Phone number", e)}
-                ${fieldOptional("avaturePersonId", "Avature ID", e, "number")}
+                ${fieldOptional("avaturePersonId", "Avature ID", e, "number", true)}
                 <input type="hidden" id="prev-status" value="${esc(e.employmentStatus)}" />
                 <input type="hidden" id="prev-avature-id" value="${esc(e.avaturePersonId != null ? e.avaturePersonId : "")}" />
                 <input type="hidden" id="prev-why" value="${esc(e.whyExEmployee || "")}" />
@@ -802,7 +802,7 @@
                 </label>
                 <div id="ex-employee-fields" style="display:none">
                   <label>Why Ex Employee
-                    <input name="whyExEmployee" type="text" placeholder="e.g. Voluntary resignation" value="${esc(e.whyExEmployee || "")}" />
+                    <textarea name="whyExEmployee" rows="4" placeholder="e.g. Voluntary resignation">${esc(e.whyExEmployee || "")}</textarea>
                   </label>
                   <label class="checkbox">
                     <input name="rehireEligible" type="checkbox" ${e.rehireEligible ? "checked" : ""} />
@@ -874,7 +874,7 @@
                     <option value="closed" ${j.status === "closed" ? "selected" : ""}>closed</option>
                   </select>
                 </label>
-                ${fieldOptional("avatureId", "Avature id", j, "number")}
+                ${fieldOptional("avatureId", "Avature id", j, "number", true)}
                 <div class="form-actions">
                   <button class="primary" type="submit">Save changes</button>
                   <a class="btn" href="#/jobs/${j.id}" style="border:1px solid #cbd2d9">Cancel</a>
