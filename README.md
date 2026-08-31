@@ -12,7 +12,9 @@ Abrir `http://localhost:3000` para la UI. La API y la UI comparten el servidor.
 
 ## Esquema
 
-**Employee** (campos obligatorios): `firstName`, `lastName`, `email`, `phoneNumber`, `jobId` (referencia al job), `employmentStatus` (`Hired` | `Ex Employee`), `hireDate`. El campo `department` se deriva automáticamente del job asignado y no puede diferir del mismo.
+**Employee** (campos obligatorios): `firstName`, `lastName`, `email`, `phoneNumber`, `jobId` (referencia al job), `employmentStatus`, `hireDate`. El campo `department` se deriva automáticamente del job asignado y no puede diferir del mismo.
+
+Los valores permitidos de `employmentStatus` son configurables con la variable de entorno `EMPLOYMENT_STATUSES` (pares `value:Label` separados por coma). Por defecto: `Hired:Hired,Ex Employee:Ex Employee`. Ejemplo: `EMPLOYMENT_STATUSES=Hired:Activo,Ex Employee:Ex Empleado,On Leave:Licencia`. El listado configurable alimenta la validación, el filtro y el select de la UI, y define el valor por defecto que aplica el flow de Avature (el primero de la lista).
 
 **Job** (campos obligatorios): `name`, `description`, `departmentId` (referencia al department), `status` (`open` | `closed`), `employmentType` (`Remote` | `On-site`), `locationId` (referencia al location).
 
@@ -54,7 +56,7 @@ El campo opcional `avatureId` (entero positivo) guarda el id del job en Avature;
 - `?pageSize=N` — tamaño de página (default `10`, máximo `100`).
 - `?cursor=...` — cursor opaco para la página siguiente (tomado de `next.cursor` o de `links.next`).
 
-`GET /employees` adicionalmente acepta `?jobId=N`, `?firstName=<texto>` (case-insensitive, substring), `?employmentStatus=Hired|Ex Employee` y `?sort=hireDate` con `?order=asc|desc` (por defecto `asc`) para filtrar/ordenar en el servidor; pueden combinarse.
+`GET /employees` adicionalmente acepta `?jobId=N`, `?firstName=<texto>` (case-insensitive, substring), `?employmentStatus=<valor configurado>` y `?sort=hireDate` con `?order=asc|desc` (por defecto `asc`) para filtrar/ordenar en el servidor; pueden combinarse.
 
 `GET /jobs` adicionalmente acepta `?status=open|closed` y `?open=true|false` (`true` → sólo `open`, `false` → sólo `closed`) para filtrar en el servidor. En la respuesta de jobs, `department` es un objeto `{ "id": <id>, "name": "<nombre>" }` (o `null` si el departamento no existe) y `departmentId` ya no se expone; para crear/editar un job el input sigue aceptando `departmentId`.
 
@@ -101,6 +103,8 @@ Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use 
 ## Integraciones
 
 Endpoints de integración viven en `integrations/` (router `integrations/flow.js`).
+
+**Referencia de API de Avature:** el spec OpenAPI 3.0 de la REST API de Avature está en `docs/avature-api.yaml` (base `https://junctiontraining.avature.net/`), útil para consultar endpoints de Records, People, Forms, Workflows, etc.
 
 ### Challenge de Avature (flow_create_employee)
 

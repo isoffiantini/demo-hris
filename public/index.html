@@ -173,7 +173,7 @@
         </a>
         <a href="#/people" data-nav="people">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          People
+          Employees
         </a>
         <a href="#/jobs" data-nav="jobs">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
@@ -201,6 +201,7 @@
     const PAGE_SIZE = 50;
     const CURRENT_USER = "Ignacio";
     const state = { jobs: [], departments: [], locations: [] };
+    const CONFIG = { employmentStatuses: [] };
     const pages = {
       employees: { list: [], pageCursor: null, next: null, prevStack: [], jobFilter: null, nameFilter: null, sortFilter: null, statusFilter: null },
       jobs: { list: [], pageCursor: null, next: null, prevStack: [], statusFilter: null },
@@ -257,6 +258,22 @@
     function employmentStatusBadge(status) {
       const cls = status === "Ex Employee" ? "ex-employee" : "hired";
       return `<span class="badge ${cls}">${esc(status)}</span>`;
+    }
+
+    function employmentStatusOptions(selected) {
+      return CONFIG.employmentStatuses.length
+        ? CONFIG.employmentStatuses
+            .map((s) => `<option value="${esc(s.value)}" ${s.value === selected ? "selected" : ""}>${esc(s.label)}</option>`)
+            .join("")
+        : "";
+    }
+
+    function employmentStatusFilterOptions(selected) {
+      return CONFIG.employmentStatuses.length
+        ? CONFIG.employmentStatuses
+            .map((s) => `<option value="${esc(s.value)}" ${s.value === selected ? "selected" : ""}>${esc(s.label)}</option>`)
+            .join("")
+        : "";
     }
 
     function locationText(j) {
@@ -335,12 +352,12 @@
       return `
         <div class="card welcome">
           <h2>Welcome ${CURRENT_USER}</h2>
-          <p>Manage your people, jobs and departments all in one place.</p>
+          <p>Manage your employees, jobs and departments all in one place.</p>
         </div>
         <div class="card">
           <div class="card-header">
-            <h2>People</h2>
-            <a class="btn primary" href="#/people/new">Create person</a>
+            <h2>Employees</h2>
+            <a class="btn primary" href="#/people/new">Create employee</a>
           </div>
           ${employeeTable(pages.employees.list)}
           ${paginationControls("employees")}
@@ -357,11 +374,11 @@
 
     function peopleListView() {
       return `
-        ${pageTitle("People", "Manage your people")}
+        ${pageTitle("Employees", "Manage your employees")}
         <div class="card">
           <div class="card-header">
-            <h2>People</h2>
-            <a class="btn primary" href="#/people/new">Create person</a>
+            <h2>Employees</h2>
+            <a class="btn primary" href="#/people/new">Create employee</a>
           </div>
           <div class="filter-bar">
             <label>Filter by job
@@ -383,8 +400,7 @@
             <label>Filter by status
               <select id="employee-status-filter" onchange="applyEmployeeStatusFilter()">
                 <option value="">All statuses</option>
-                <option value="Hired" ${pages.employees.statusFilter === "Hired" ? "selected" : ""}>Hired</option>
-                <option value="Ex Employee" ${pages.employees.statusFilter === "Ex Employee" ? "selected" : ""}>Ex Employee</option>
+                ${employmentStatusFilterOptions(pages.employees.statusFilter)}
               </select>
             </label>
           </div>
@@ -454,7 +470,7 @@
     }
 
     function employeeTable(list) {
-      if (!list.length) return '<div class="empty">No people yet.</div>';
+      if (!list.length) return '<div class="empty">No employees yet.</div>';
       return `<table>
         <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Job</th><th>Status</th><th>Hire date</th></tr></thead>
         <tbody>
@@ -510,7 +526,7 @@
 
     function employeeDetailView(id) {
       return `
-        <a class="back" href="#/people">← People</a>
+        <a class="back" href="#/people">← Employees</a>
         <div class="card"><div class="msg">Loading...</div></div>`;
     }
 
@@ -526,7 +542,7 @@
         return `<div class="card"><div class="msg">Loading...</div></div>`;
       }
       return `
-        ${pageTitle("Create person")}
+        ${pageTitle("Create employee")}
         <div class="card">
           <form id="entity-form">
             ${field("firstName", "First name", null)}
@@ -535,8 +551,7 @@
             ${field("phoneNumber", "Phone number", null)}
             <label>Employment status
               <select name="employmentStatus" required>
-                <option value="Hired">Hired</option>
-                <option value="Ex Employee">Ex Employee</option>
+                ${employmentStatusOptions(null)}
               </select>
             </label>
             <label>Hire date <input name="hireDate" type="date" required /></label>
@@ -545,7 +560,7 @@
             </label>
             <div class="subtitle" id="dept-hint"></div>
             <div class="form-actions">
-              <button class="primary" type="submit">Create person</button>
+              <button class="primary" type="submit">Create employee</button>
               <a class="btn" href="#/people" style="border:1px solid #cbd2d9">Cancel</a>
             </div>
           </form>
@@ -755,7 +770,7 @@
       if (!res.ok || !data) {
         const back = type === "employee" ? "#/people" : "#/jobs";
         app.innerHTML = `<a class="back" href="${back}">← Back</a>
-          <div class="card"><div class="msg error">${type === "employee" ? "Person" : "Job"} not found.</div></div>`;
+          <div class="card"><div class="msg error">${type === "employee" ? "Employee" : "Job"} not found.</div></div>`;
         return;
       }
 
@@ -763,7 +778,7 @@
         const e = data;
         if (mode === "edit") {
           app.innerHTML = `
-            ${pageTitle("Edit person")}
+            ${pageTitle("Edit employee")}
             <div class="card">
               <form id="entity-form">
                 ${field("firstName", "First name", e)}
@@ -772,8 +787,7 @@
                 ${field("phoneNumber", "Phone number", e)}
                 <label>Employment status
                   <select name="employmentStatus" required>
-                    <option value="Hired" ${e.employmentStatus === "Hired" ? "selected" : ""}>Hired</option>
-                    <option value="Ex Employee" ${e.employmentStatus === "Ex Employee" ? "selected" : ""}>Ex Employee</option>
+                    ${employmentStatusOptions(e.employmentStatus)}
                   </select>
                 </label>
                 <label>Hire date <input name="hireDate" type="date" value="${esc(e.hireDate)}" required /></label>
@@ -792,7 +806,7 @@
           return;
         }
         app.innerHTML = `
-          <a class="back" href="#/people">← People</a>
+          <a class="back" href="#/people">← Employees</a>
           <div class="card">
             <div class="card-header">
               <h2>${esc(e.firstName)} ${esc(e.lastName)}</h2>
@@ -962,20 +976,20 @@
       }
       await loadData();
       if (isEdit) {
-        showToast(type === "job" ? "Job updated." : "Person updated.");
+        showToast(type === "job" ? "Job updated." : "Employee updated.");
         location.hash = type === "job" ? `#/jobs/${id}` : `#/people/${id}`;
       } else {
-        showToast(type === "job" ? "Job created successfully." : "Person created successfully.");
+        showToast(type === "job" ? "Job created successfully." : "Employee created successfully.");
         location.hash = type === "job" ? "#/jobs" : "#/people";
       }
     }
 
     async function deleteEmployee(id) {
-      if (!confirm("Delete this person?")) return;
+      if (!confirm("Delete this employee?")) return;
       const { res } = await api(`/employees/${id}`, "DELETE");
       if (!res.ok) { showToast("Delete failed", "error"); return; }
       await loadData();
-      showToast("Person deleted.");
+      showToast("Employee deleted.");
       location.hash = "#/people";
     }
 
@@ -1043,6 +1057,10 @@
     }
 
     async function loadData() {
+      const configRes = await api("/config");
+      if (configRes.res.ok && configRes.data && Array.isArray(configRes.data.employmentStatuses)) {
+        CONFIG.employmentStatuses = configRes.data.employmentStatuses;
+      }
       const [jobRes, locRes] = await Promise.all([
         api("/jobs?pageSize=100"),
         api("/locations?pageSize=100"),

@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const { readData, writeData, nextId } = require("./store");
 const flowRouter = require("./integrations/flow");
+const { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_VALUES, EMPLOYMENT_STATUS_LABELS } = require("./config");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -244,7 +245,12 @@ app.all("/callback/:operation", async (req, res) => {
 
 app.use(flowRouter);
 
-const EMPLOYMENT_STATUSES = ["Hired", "Ex Employee"];
+app.get("/config", (req, res) => {
+  res.json({
+    employmentStatuses: EMPLOYMENT_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+  });
+});
+
 const JOB_STATUSES = ["open", "closed"];
 const EMPLOYMENT_TYPES = ["Remote", "On-site"];
 
@@ -268,8 +274,8 @@ function validateEmployee(body, partial) {
   if (!partial && body.employmentStatus === undefined) {
     errors.push("employmentStatus is required");
   }
-  if (body.employmentStatus !== undefined && !EMPLOYMENT_STATUSES.includes(body.employmentStatus)) {
-    errors.push("employmentStatus must be 'Hired' or 'Ex Employee'");
+  if (body.employmentStatus !== undefined && !EMPLOYMENT_STATUS_VALUES.includes(body.employmentStatus)) {
+    errors.push(`employmentStatus must be one of: ${EMPLOYMENT_STATUS_VALUES.join(", ")}`);
   }
   if (!partial && body.hireDate === undefined) {
     errors.push("hireDate is required");
@@ -468,8 +474,8 @@ app.get("/employees", (req, res) => {
   }
   if (req.query.employmentStatus !== undefined) {
     const status = String(req.query.employmentStatus).trim();
-    if (status && !EMPLOYMENT_STATUSES.includes(status)) {
-      return res.status(400).json({ errors: ["employmentStatus must be 'Hired' or 'Ex Employee'"] });
+    if (status && !EMPLOYMENT_STATUS_VALUES.includes(status)) {
+      return res.status(400).json({ errors: [`employmentStatus must be one of: ${EMPLOYMENT_STATUS_VALUES.join(", ")}`] });
     }
     if (status) {
       list = list.filter((e) => e.employmentStatus === status);

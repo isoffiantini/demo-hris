@@ -2,6 +2,7 @@ const express = require("express");
 const { readData, writeData, nextId } = require("../store");
 const { resolveTrackingCode, resolveRecordId, sendErrorLog, utcDateTime, resolveLogContext, makeLog, sendLogSafe } = require("./junction");
 const { attachForm, patchFormAt, getEmployeeSyncForm, getAvatureRecordNames, moveApplicationToStep } = require("./hrisSync");
+const { EMPLOYMENT_STATUS_VALUES } = require("../config");
 
 const router = express.Router();
 
@@ -27,7 +28,9 @@ function toEmployeePayload(payload) {
     email: props.email || "",
     phoneNumber: normalizeNull(props.phone),
     jobId: Number(props.job_hris_id),
-    employmentStatus: props.employmentStatus === "Ex Employee" ? "Ex Employee" : "Hired",
+    employmentStatus: EMPLOYMENT_STATUS_VALUES.includes(props.employmentStatus)
+      ? props.employmentStatus
+      : EMPLOYMENT_STATUS_VALUES[0],
     hireDate: props.hireDate || new Date().toISOString().slice(0, 10),
   };
 }
