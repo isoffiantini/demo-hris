@@ -288,6 +288,121 @@ function compoundResults(parsed) {
   return [];
 }
 
+const TABLE_SCHEMA_IDS = { work_history: 21, education_history: 20 };
+const tableSchemaCache = {};
+
+function schemaResults(parsed) {
+  if (parsed && Array.isArray(parsed.results)) return parsed.results;
+  if (Array.isArray(parsed)) return parsed;
+  return [];
+}
+
+function schemaNextCursor(parsed) {
+  const pagination = parsed && parsed.pagination;
+  return pagination && pagination.next && pagination.next.cursor ? pagination.next.cursor : null;
+}
+
+function fieldLabel(f) {
+  const raw = String((f && f.label) || "");
+  if (raw && raw !== String(f.id)) return raw;
+  return String((f && f.id) || "");
+}
+
+async function fetchTableSchema(tableId) {
+  const showUrl = `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/schema/tables/${tableId}`;
+  const { res: showRes, text: showText } = await requestJson(showUrl, { headers: apiKeyHeaders() });
+  if (!showRes.ok) {
+    throw new Error(`avature table schema GET failed: ${showRes.status} ${showText.slice(0, 300)}`);
+  }
+  const show = parseJson(showText);
+
+  const base = `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/schema/tables/${tableId}/fields`;
+  const fieldMap = {};
+  let cursor = null;
+  for (let page = 0; page < 20; page += 1) {
+    let url = base;
+    if (cursor) url += `?cursor=${encodeURIComponent(cursor)}`;
+    const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
+    if (!res.ok) {
+      throw new Error(`avature table schema fields GET failed: ${res.status} ${text.slice(0, 300)}`);
+    }
+    const parsed = parseJson(text);
+    for (const f of schemaResults(parsed)) fieldMap[String(f.id)] = fieldLabel(f);
+    cursor = schemaNextCursor(parsed);
+    if (!cursor) break;
+  }
+
+  tableSchemaCache[tableId] = {
+    label: String((show && show.label) || tableId),
+    canonicalName: (show && show.canonicalName) || null,
+    fieldMap,
+  };
+  return tableSchemaCache[tableId];
+}
+
+function getTableSchema(tableId) {
+  if (tableSchemaCache[tableId]) return Promise.resolve(tableSchemaCache[tableId]);
+  return fetchTableSchema(tableId);
+}
+
+function fieldToDisplay(value) {
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    const parts = value.map((v) => {
+      if (v === null || v === undefined) return null;
+      if (typeof v === "object" && "display" in v) return String(v.display);
+      if (typeof v === "object" && "label" in v) return String(v.label);
+      return String(v);
+    });
+    const filtered = parts.filter((p) => p !== null && p !== "");
+    return filtered.length ? filtered.join(", ") : null;
+  }
+  if (typeof value === "object") {
+    if ("display" in value) return String(value.display);
+    if ("label" in value) return String(value.label);
+    if ("id" in value) return String(value.id);
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+async function getPersonTable(avaturePersonId, tableName) {
+  if (!AVATURE_REST_API_KEY) {
+    console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; cannot fetch person table.");
+    throw new Error("AVATURE_REST_API_KEY is not set");
+  }
+  const tableId = TABLE_SCHEMA_IDS[tableName];
+  if (!tableId) {
+    throw new Error(`Unknown person table: ${tableName}`);
+  }
+  const schema = await getTableSchema(tableId);
+  const url = `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/data/records_${RECORD_TYPE_EMPLOYEE}/${avaturePersonId}/field_${tableName}`;
+  const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
+  if (!res.ok) {
+    throw new Error(`avature table GET failed: ${res.status} ${text.slice(0, 300)}`);
+  }
+  const parsed = parseJson(text);
+  const rows = [];
+  for (const row of schemaResults(parsed)) {
+    const fields = [];
+    for (const [key, value] of Object.entries(row)) {
+      const label = schema.fieldMap[key];
+      if (!label) continue;
+      const display = fieldToDisplay(value);
+      if (display === null) continue;
+      fields.push({ key, label, value: display });
+    }
+    rows.push({ id: row.id !== undefined && row.id !== null ? row.id : null, fields });
+  }
+  return {
+    id: Number(avaturePersonId),
+    table: tableName,
+    label: schema.label,
+    count: rows.length,
+    rows,
+  };
+}
+
 function compoundNextCursor(parsed) {
   const pagination = parsed && parsed.pagination;
   return pagination && pagination.next && pagination.next.cursor ? pagination.next.cursor : null;
@@ -382,6 +497,7 @@ module.exports = {
   AVATURE_REST_BASE_URL,
   AVATURE_REST_API_KEY,
   HRIS_SYNC_FORM_ID,
+  RECORD_TYPE_EMPLOYEE,
   RECORD_TYPE_JOB,
   RECORD_TYPE_DEPARTMENT,
   attachForm,
@@ -391,5 +507,6 @@ module.exports = {
   getEmployeeSyncForm,
   getAvatureRecordNames,
   getJobCandidates,
+  getPersonTable,
   moveApplicationToStep,
 };

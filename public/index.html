@@ -1110,15 +1110,22 @@
 
     // ---------- job bot ----------
     let jobBotContext = null;
+    const botState = { candidates: [], selected: null };
+
+    function resetBotState() {
+      botState.candidates = [];
+      botState.selected = null;
+    }
 
     function initJobBot(job) {
       const host = document.getElementById("job-bot");
       if (!host) return;
       if (!job || !job.avatureId) return;
       jobBotContext = { id: job.id, status: job.status };
+      resetBotState();
       const canCandidates = job.status === "open";
       const greeting = canCandidates
-        ? "Hi! This job is synced with Avature. I can <b>delete</b> it from Avature or show the <b>candidates</b> that applied to it."
+        ? "Hi! This job is synced with Avature. I can <b>delete</b> it from Avature, show the <b>candidates</b> that applied to it, or look at a candidate's <b>work/education history</b>."
         : "Hi! This job is synced with Avature. Type <b>delete</b> to delete it.";
       host.innerHTML = `
         <button class="job-bot-toggle" onclick="toggleJobBot()" title="Job assistant (Avature)" aria-label="Open job assistant">
@@ -1169,17 +1176,77 @@
       input.value = "";
       jobBotMsg(esc(text), true);
       const lower = text.toLowerCase();
+      const selected = botState.selected;
+      const pickTable = (t) => botShowHistory(selected.avaturePersonId, t);
       if (/(delete|borrar|eliminar|remove)/.test(lower)) {
         jobBotMsg('I will delete this job from Avature. Type <b>yes</b> to confirm.');
       } else if (/^(yes|si|confirm|confirmar|ok)$/.test(lower)) {
         botDeleteJob(id);
       } else if (/(candidates|candidatos)/.test(lower)) {
         botShowCandidates(id);
+      } else if (selected) {
+        if (/^(1|work|work history|trabajo|experiencia|employers?)$/.test(lower)) {
+          pickTable("work_history");
+        } else if (/^(2|education|education history|estudios?|estudio|universidad)$/.test(lower)) {
+          pickTable("education_history");
+        } else if (/(history|historial|historias?)/.test(lower)) {
+          jobBotMsg(`Which would you like to see?<br>1. Work history<br>2. Education history`);
+        } else {
+          jobBotMsg(`You're viewing <b>${esc(candidateName(selected))}</b>. Tell me what you'd like:<br>1. Work history<br>2. Education history<br><i>or type 'work' / 'education'.</i>`);
+        }
+      } else if (/^\d+$/.test(text) && botState.candidates.length) {
+        const idx = Number(text) - 1;
+        if (idx >= 0 && idx < botState.candidates.length) {
+          botSelectCandidate(idx);
+        } else {
+          jobBotMsg(`Pick a number between 1 and ${botState.candidates.length}.`);
+        }
+      } else if (/(history|historial|work|education|historia)/.test(lower) && botState.candidates.length) {
+        jobBotMsg(`First, type the <b>number</b> of the candidate you'd like to look at.`);
       } else {
         const canCandidates = jobBotContext && jobBotContext.status === "open";
         jobBotMsg(canCandidates
-          ? 'I can <b>delete</b> this job from Avature or show the <b>candidates</b> that applied to it.'
+          ? 'I can <b>delete</b> this job from Avature or show the <b>candidates</b> that applied to it. Type <b>candidates</b> to start.'
           : 'I can delete this job from Avature. Type <b>delete</b> to start.');
+      }
+    }
+
+    function candidateName(c) {
+      return c && c.firstName && c.lastName ? `${c.firstName} ${c.lastName}` : String((c && (c.avaturePersonId || c.compoundRecordId)) || "?");
+    }
+
+    async function botSelectCandidate(index) {
+      const c = botState.candidates[index];
+      if (!c) { jobBotMsg("Pick a candidate by number from the list above."); return; }
+      botState.selected = c;
+      const name = candidateName(c);
+      const link = c.avatureUrl
+        ? ` <a href="${esc(c.avatureUrl)}" target="_blank" rel="noopener noreferrer">open in Avature</a>`
+        : "";
+      jobBotMsg(`You picked <b>${esc(name)}</b>.${link}<br>What would you like to see?<br>1. Work history<br>2. Education history<br><i>Type a number or the word 'work' / 'education'.</i>`);
+    }
+
+    async function botShowHistory(personId, tableName) {
+      const label = tableName === "work_history" ? "Work history" : "Education history";
+      jobBotMsg(`Fetching ${label} from Avature...`);
+      try {
+        const { res, data } = await api(`/person/${personId}/history?table=${tableName}`);
+        if (!res.ok) {
+          jobBotMsg(`Error: ${esc(extractErrors(data))}`);
+          return;
+        }
+        const rows = data && Array.isArray(data.rows) ? data.rows : [];
+        if (!rows.length) {
+          jobBotMsg(`No <b>${esc((data && data.label) || label)}</b> entries for this candidate in Avature.`);
+          return;
+        }
+        const items = rows.map((row, i) => {
+          const parts = (row.fields || []).map((f) => `<b>${esc(f.label)}</b>: ${esc(f.value)}`);
+          return `${i + 1}. ${parts.join(" &middot; ")}`;
+        });
+        jobBotMsg(`<b>${esc((data && data.label) || label)}</b> (${rows.length}):<br>${items.join("<br>")}`);
+      } catch (err) {
+        jobBotMsg(`Error: ${esc(err.message)}`);
       }
     }
 
@@ -1194,21 +1261,21 @@
         const list = data && Array.isArray(data.candidates) ? data.candidates : [];
         if (!list.length) {
           jobBotMsg("No candidates found for this job in Avature.");
+          botState.candidates = [];
           return;
         }
+        botState.candidates = list;
+        botState.selected = null;
         const items = list.map((c, i) => {
-          const name = c.firstName && c.lastName
-            ? `${esc(c.firstName)} ${esc(c.lastName)}`
-            : esc(String(c.avaturePersonId || c.compoundRecordId || "?"));
           const step = c.workflowStep && c.workflowStep.display
             ? ` <i>(${esc(String(c.workflowStep.display))})</i>`
             : "";
           const link = c.avatureUrl
             ? ` <a href="${esc(c.avatureUrl)}" target="_blank" rel="noopener noreferrer">view</a>`
             : "";
-          return `${i + 1}. ${name}${step}${link}`;
+          return `${i + 1}. ${esc(candidateName(c))}${step}${link}`;
         });
-        jobBotMsg(`${list.length} candidate(s) applied to this job:<br>${items.join("<br>")}`);
+        jobBotMsg(`${list.length} candidate(s) applied to this job:<br>${items.join("<br>")}<br><i>Type a candidate's <b>number</b> to see their work/education history.</i>`);
       } catch (err) {
         jobBotMsg(`Error: ${esc(err.message)}`);
       }

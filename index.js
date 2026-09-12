@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const { readData, writeData, nextId } = require("./store");
 const flowRouter = require("./integrations/flow");
-const { deleteAvatureRecord, getJobCandidates, getAvatureRecordNames, RECORD_TYPE_JOB, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
+const { deleteAvatureRecord, getJobCandidates, getAvatureRecordNames, getPersonTable, RECORD_TYPE_JOB, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
 const { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_VALUES, EMPLOYMENT_STATUS_LABELS } = require("./config");
 
 const app = express();
@@ -718,6 +718,26 @@ app.get("/jobs/:id/candidates", async (req, res) => {
     });
   } catch (err) {
     console.error(`[candidates] job ${entity.id} failed: ${err.message}`);
+    res.status(502).json({ errors: [err.message] });
+  }
+});
+
+const PERSON_TABLE_NAMES = new Set(["work_history", "education_history"]);
+
+app.get("/person/:id/history", async (req, res) => {
+  const personId = Number(req.params.id);
+  if (!Number.isInteger(personId) || personId <= 0) {
+    return res.status(400).json({ errors: ["invalid person id"] });
+  }
+  const tableName = String(req.query.table || "");
+  if (!PERSON_TABLE_NAMES.has(tableName)) {
+    return res.status(400).json({ errors: [`table must be one of: ${[...PERSON_TABLE_NAMES].join(", ")}`] });
+  }
+  try {
+    const history = await getPersonTable(personId, tableName);
+    res.json(history);
+  } catch (err) {
+    console.error(`[person] ${personId} ${tableName} failed: ${err.message}`);
     res.status(502).json({ errors: [err.message] });
   }
 });
