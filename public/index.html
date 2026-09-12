@@ -1216,14 +1216,13 @@
     async function botDeleteJob(id) {
       jobBotMsg("Deleting job from Avature...");
       try {
-        const { res, data } = await api(`/jobs/${id}`, "DELETE");
+        const { res, data } = await api(`/jobs/${id}?mode=avature`, "DELETE");
         if (!res.ok) {
           jobBotMsg(`Error: ${esc(extractErrors(data))}`);
           return;
         }
-        await loadData();
-        showToast("Job deleted from Avature.");
-        location.hash = "#/jobs";
+        jobBotMsg("Done! The job was deleted from Avature. It still exists in the HRIS system — use the <b>Delete</b> button to remove it there too.");
+        jobBotContext = { id, status: "deleted" };
       } catch (err) {
         jobBotMsg(`Error: ${esc(err.message)}`);
       }
