@@ -1268,6 +1268,8 @@
         const lines = data && Array.isArray(data.lines) ? data.lines : [];
         const title = [data.firstName, data.lastName].filter(Boolean).join(" ") || `Person ${data.id}`;
         const fileName = `candidate-${personId}-summary.pdf`;
+        const nTables = data.tables ? data.tables.length : 0;
+        const tablesNote = nTables ? ` + ${nTables} tables` : "";
         if (window.jspdf && window.jspdf.jsPDF) {
           const doc = new window.jspdf.jsPDF();
           const pageH = doc.internal.pageSize.getHeight();
@@ -1287,11 +1289,30 @@
               y = writePdfLine(doc, wl, y, pageH, 10);
             }
           }
+          for (const t of data.tables || []) {
+            y += 6;
+            doc.setFont(undefined, "bold");
+            y = writePdfLine(doc, `${t.label} (${t.count})`, y, pageH, 10);
+            doc.setFont(undefined, "normal");
+            t.rows.forEach((r, i) => {
+              y += 3;
+              doc.setFont(undefined, "bold");
+              y = writePdfLine(doc, String(i + 1), y, pageH, 11);
+              doc.setFont(undefined, "normal");
+              for (const f of r.fields) {
+                const text = `${f.label}: ${f.value}`;
+                const wrapped = doc.splitTextToSize(text, 184);
+                for (const wl of wrapped) {
+                  y = writePdfLine(doc, wl, y, pageH, 12);
+                }
+              }
+            });
+          }
           doc.save(fileName);
-          jobBotMsg(`Downloaded <b>${esc(fileName)}</b> (${data.count} fields) for <b>${esc(title)}</b>.`);
+          jobBotMsg(`Downloaded <b>${esc(fileName)}</b> (${data.count} fields${tablesNote}) for <b>${esc(title)}</b>.`);
         } else {
           downloadText(`candidate-${personId}-summary.txt`, buildSummaryText(data));
-          jobBotMsg(`PDF library unavailable, downloaded <b>${esc(`candidate-${personId}-summary.txt`)}</b> instead (${data.count} fields) for <b>${esc(title)}</b>.`);
+          jobBotMsg(`PDF library unavailable, downloaded <b>${esc(`candidate-${personId}-summary.txt`)}</b> instead (${data.count} fields${tablesNote}) for <b>${esc(title)}</b>.`);
         }
       } catch (err) {
         jobBotMsg(`Error: ${esc(err.message)}`);
@@ -1311,7 +1332,14 @@
       const title = [data.firstName, data.lastName].filter(Boolean).join(" ") || `Person ${data.id}`;
       const lines = data && Array.isArray(data.lines) ? data.lines : [];
       const header = `${title}\nAvature person id: ${data.id}\nFields with data: ${data.count}\n${"=".repeat(40)}\n`;
-      return header + lines.map((l) => `${l.label}: ${l.value}`).join("\n") + "\n";
+      let text = header + lines.map((l) => `${l.label}: ${l.value}`).join("\n");
+      for (const t of (data.tables || [])) {
+        text += `\n\n${t.label} (${t.count})\n${"-".repeat(40)}\n`;
+        t.rows.forEach((r, i) => {
+          text += `\n${i + 1}.\n` + r.fields.map((f) => `  ${f.label}: ${f.value}`).join("\n") + "\n";
+        });
+      }
+      return text + "\n";
     }
 
     async function botShowHistory(personId, tableName) {

@@ -473,12 +473,29 @@ async function getPersonSummary(avaturePersonId) {
     if (value === null || value === "") continue;
     lines.push({ key: f.id, label: prettyFieldLabel(f.label), value });
   }
+
+  const tables = [];
+  for (const [tableName, tableId] of Object.entries(TABLE_SCHEMA_IDS)) {
+    try {
+      const t = await getPersonTable(avaturePersonId, tableName);
+      tables.push({
+        table: t.table,
+        label: t.label,
+        count: t.count,
+        rows: t.rows.map((r) => ({ id: r.id, fields: r.fields })),
+      });
+    } catch (err) {
+      console.warn(`[hrisSync] summary table ${tableName} failed: ${err.message}`);
+    }
+  }
+
   return {
     id: parsed.id !== undefined && parsed.id !== null ? Number(parsed.id) : Number(avaturePersonId),
     firstName: parsed.firstName !== undefined && parsed.firstName !== null ? String(parsed.firstName) : null,
     lastName: parsed.lastName !== undefined && parsed.lastName !== null ? String(parsed.lastName) : null,
     count: lines.length,
     lines,
+    tables,
   };
 }
 
