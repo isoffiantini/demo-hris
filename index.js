@@ -467,11 +467,11 @@ function requestUrl(req) {
   return new URL(req.originalUrl, `${scheme}://${host}`);
 }
 
-function paginateCursor(list, req, sortFn) {
+function paginateCursor(list, req, sortFn, defaultPageSize = 10) {
   const pageSizeRaw = Number(req.query.pageSize);
   const pageSize = Number.isInteger(pageSizeRaw) && pageSizeRaw > 0
     ? Math.min(pageSizeRaw, 100)
-    : 10;
+    : defaultPageSize;
 
   const sorted = sortFn ? [...list].sort(sortFn) : [...list].sort((a, b) => a.id - b.id);
 
@@ -663,7 +663,7 @@ app.get("/jobs", (req, res) => {
       return res.status(400).json({ errors: ["open must be 'true' or 'false'"] });
     }
   }
-  res.json(paginateCursor(jobs, req));
+  res.json(paginateCursor(jobs, req, null, 50));
 });
 
 app.get("/jobs/:id", (req, res) => {
