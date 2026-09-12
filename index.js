@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const { readData, writeData, nextId } = require("./store");
 const flowRouter = require("./integrations/flow");
-const { deleteAvatureRecord, getJobCandidates, getAvatureRecordNames, getPersonTable, RECORD_TYPE_JOB, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
+const { deleteAvatureRecord, getJobCandidates, getAvatureRecordNames, getPersonTable, getPersonSummary, RECORD_TYPE_JOB, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
 const { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_VALUES, EMPLOYMENT_STATUS_LABELS } = require("./config");
 
 const app = express();
@@ -723,6 +723,20 @@ app.get("/jobs/:id/candidates", async (req, res) => {
 });
 
 const PERSON_TABLE_NAMES = new Set(["work_history", "education_history"]);
+
+app.get("/person/:id/summary", async (req, res) => {
+  const personId = Number(req.params.id);
+  if (!Number.isInteger(personId) || personId <= 0) {
+    return res.status(400).json({ errors: ["invalid person id"] });
+  }
+  try {
+    const summary = await getPersonSummary(personId);
+    res.json(summary);
+  } catch (err) {
+    console.error(`[person] ${personId} summary failed: ${err.message}`);
+    res.status(502).json({ errors: [err.message] });
+  }
+});
 
 app.get("/person/:id/history", async (req, res) => {
   const personId = Number(req.params.id);

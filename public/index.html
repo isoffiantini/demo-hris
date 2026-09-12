@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Demo HRIS</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -197,6 +198,13 @@
       cursor: pointer; font-size: 16px;
     }
     .job-bot-input-row button:hover { background: #1f456b; }
+    .job-bot-size-btn {
+      background: none; border: none; color: #fff; cursor: pointer;
+      font-size: 15px; line-height: 1; margin-right: 12px; padding: 2px 4px;
+    }
+    .job-bot-size-btn:hover { color: #c7d6e8; }
+    .job-bot.expanded .job-bot-panel { width: min(760px, 95vw); height: min(660px, 85vh); }
+    .job-bot.expanded .job-bot-msgs { height: auto; flex: 1; }
   </style>
 </head>
 <body>
@@ -1125,7 +1133,7 @@
       resetBotState();
       const canCandidates = job.status === "open";
       const greeting = canCandidates
-        ? "Hi! This job is synced with Avature. I can <b>delete</b> it from Avature, show the <b>candidates</b> that applied to it, or look at a candidate's <b>work/education history</b>."
+        ? "Hi! This job is synced with Avature. I can <b>delete</b> it from Avature or show the <b>candidates</b> that applied to it."
         : "Hi! This job is synced with Avature. Type <b>delete</b> to delete it.";
       host.innerHTML = `
         <button class="job-bot-toggle" onclick="toggleJobBot()" title="Job assistant (Avature)" aria-label="Open job assistant">
@@ -1134,7 +1142,10 @@
         <div class="job-bot-panel" id="job-bot-panel">
           <div class="job-bot-head">
             <span>Job Assistant</span>
-            <button class="job-bot-close" onclick="toggleJobBot(false)" aria-label="Close">×</button>
+            <span style="display:flex; align-items:center;">
+              <button class="job-bot-size-btn" onclick="toggleJobBotSize()" title="Toggle size" aria-label="Toggle size">⛶</button>
+              <button class="job-bot-close" onclick="toggleJobBot(false)" aria-label="Close">×</button>
+            </span>
           </div>
           <div class="job-bot-msgs" id="job-bot-msgs">
             <div class="job-bot-msg bot">${greeting}</div>
@@ -1144,6 +1155,12 @@
             <button onclick="jobBotSend(${job.id})">Send</button>
           </div>
         </div>`;
+    }
+
+    function toggleJobBotSize() {
+      const host = document.getElementById("job-bot");
+      if (!host) return;
+      host.classList.toggle("expanded");
     }
 
     function toggleJobBot(force) {
@@ -1189,10 +1206,12 @@
           pickTable("work_history");
         } else if (/^(2|education|education history|estudios?|estudio|universidad)$/.test(lower)) {
           pickTable("education_history");
+        } else if (/^(3|summary|resumen|download|descargar|export|exportar)$/.test(lower)) {
+          botDownloadSummary(selected.avaturePersonId);
         } else if (/(history|historial|historias?)/.test(lower)) {
           jobBotMsg(`Which would you like to see?<br>1. Work history<br>2. Education history`);
         } else {
-          jobBotMsg(`You're viewing <b>${esc(candidateName(selected))}</b>. Tell me what you'd like:<br>1. Work history<br>2. Education history<br><i>or type 'work' / 'education'.</i>`);
+          jobBotMsg(`You're viewing <b>${esc(candidateName(selected))}</b>. Tell me what you'd like:<br>1. Work history<br>2. Education history<br>3. Download summary<br><i>or type 'work', 'education' or 'summary'.</i>`);
         }
       } else if (/^\d+$/.test(text) && botState.candidates.length) {
         const idx = Number(text) - 1;
@@ -1223,7 +1242,76 @@
       const link = c.avatureUrl
         ? ` <a href="${esc(c.avatureUrl)}" target="_blank" rel="noopener noreferrer">open in Avature</a>`
         : "";
-      jobBotMsg(`You picked <b>${esc(name)}</b>.${link}<br>What would you like to see?<br>1. Work history<br>2. Education history<br><i>Type a number or the word 'work' / 'education'.</i>`);
+      jobBotMsg(`You picked <b>${esc(name)}</b>.${link}<br>What would you like to see?<br>1. Work history<br>2. Education history<br>3. Download summary<br><i>Type a number or the word 'work' / 'education' / 'summary'.</i>`);
+    }
+
+    function downloadText(filename, text) {
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    async function botDownloadSummary(personId) {
+      jobBotMsg("Building the summary from the record's schema fields...");
+      try {
+        const { res, data } = await api(`/person/${personId}/summary`);
+        if (!res.ok) {
+          jobBotMsg(`Error: ${esc(extractErrors(data))}`);
+          return;
+        }
+        const lines = data && Array.isArray(data.lines) ? data.lines : [];
+        const title = [data.firstName, data.lastName].filter(Boolean).join(" ") || `Person ${data.id}`;
+        const fileName = `candidate-${personId}-summary.pdf`;
+        if (window.jspdf && window.jspdf.jsPDF) {
+          const doc = new window.jspdf.jsPDF();
+          const pageH = doc.internal.pageSize.getHeight();
+          let y = 16;
+          doc.setFontSize(14);
+          doc.setFont(undefined, "bold");
+          y = writePdfLine(doc, title, y, pageH, 10);
+          doc.setFontSize(10);
+          doc.setFont(undefined, "normal");
+          y = writePdfLine(doc, `Avature person id: ${data.id}`, y, pageH, 10);
+          y = writePdfLine(doc, `Fields with data: ${data.count}`, y, pageH, 10);
+          y += 4;
+          for (const l of lines) {
+            const text = `${l.label}: ${l.value}`;
+            const wrapped = doc.splitTextToSize(text, 190);
+            for (const wl of wrapped) {
+              y = writePdfLine(doc, wl, y, pageH, 10);
+            }
+          }
+          doc.save(fileName);
+          jobBotMsg(`Downloaded <b>${esc(fileName)}</b> (${data.count} fields) for <b>${esc(title)}</b>.`);
+        } else {
+          downloadText(`candidate-${personId}-summary.txt`, buildSummaryText(data));
+          jobBotMsg(`PDF library unavailable, downloaded <b>${esc(`candidate-${personId}-summary.txt`)}</b> instead (${data.count} fields) for <b>${esc(title)}</b>.`);
+        }
+      } catch (err) {
+        jobBotMsg(`Error: ${esc(err.message)}`);
+      }
+    }
+
+    function writePdfLine(doc, text, y, pageH, margin) {
+      if (y > pageH - 16) {
+        doc.addPage();
+        y = 16;
+      }
+      doc.text(text, margin, y);
+      return y + 5.5;
+    }
+
+    function buildSummaryText(data) {
+      const title = [data.firstName, data.lastName].filter(Boolean).join(" ") || `Person ${data.id}`;
+      const lines = data && Array.isArray(data.lines) ? data.lines : [];
+      const header = `${title}\nAvature person id: ${data.id}\nFields with data: ${data.count}\n${"=".repeat(40)}\n`;
+      return header + lines.map((l) => `${l.label}: ${l.value}`).join("\n") + "\n";
     }
 
     async function botShowHistory(personId, tableName) {

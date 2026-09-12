@@ -403,6 +403,85 @@ async function getPersonTable(avaturePersonId, tableName) {
   };
 }
 
+const PERSON_SCHEMA_TTL_MS = 10 * 60 * 1000;
+let personSchemaCache = { at: 0, fields: [] };
+
+async function fetchPersonSchemaFields() {
+  const base = `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/schema/personRecords/${RECORD_TYPE_EMPLOYEE}/fields`;
+  const all = [];
+  let cursor = null;
+  for (let page = 0; page < 20; page += 1) {
+    let url = base;
+    if (cursor) url += `?cursor=${encodeURIComponent(cursor)}`;
+    const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
+    if (!res.ok) {
+      throw new Error(`avature schema GET failed: ${res.status} ${text.slice(0, 300)}`);
+    }
+    const parsed = parseJson(text);
+    all.push(...schemaResults(parsed));
+    cursor = schemaNextCursor(parsed);
+    if (!cursor) break;
+  }
+  return all;
+}
+
+async function getPersonFields() {
+  if (!AVATURE_REST_API_KEY) {
+    console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; cannot fetch schema.");
+    throw new Error("AVATURE_REST_API_KEY is not set");
+  }
+  const now = Date.now();
+  if (personSchemaCache.fields.length && now - personSchemaCache.at < PERSON_SCHEMA_TTL_MS) {
+    return personSchemaCache.fields;
+  }
+  const raw = await fetchPersonSchemaFields();
+  const fields = raw.map((f) => ({
+    id: String(f.id),
+    label: fieldLabel(f),
+    labeled: !!(f && f.label && String(f.label) !== String(f.id)),
+  }));
+  personSchemaCache = { at: now, fields };
+  return fields;
+}
+
+function prettyFieldLabel(label) {
+  return String(label)
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+async function getPersonSummary(avaturePersonId) {
+  if (!AVATURE_REST_API_KEY) {
+    console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; cannot build summary.");
+    throw new Error("AVATURE_REST_API_KEY is not set");
+  }
+  const fields = await getPersonFields();
+  const summaryFields = fields.filter((f) => !(f.id.match(/^field_\d+$/) && !f.labeled));
+  const ids = summaryFields.map((f) => f.id);
+  if (!ids.length) {
+    throw new Error("no schema fields available to build the summary");
+  }
+  const url = `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/data/records_${RECORD_TYPE_EMPLOYEE}/${avaturePersonId}?fields=${encodeURIComponent(ids.join(","))}&use_canonical_names=1`;
+  const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
+  if (!res.ok) {
+    throw new Error(`avature record GET failed: ${res.status} ${text.slice(0, 300)}`);
+  }
+  const parsed = parseJson(text);
+  const lines = [];
+  for (const f of summaryFields) {
+    const value = fieldToDisplay(parsed[f.id]);
+    if (value === null || value === "") continue;
+    lines.push({ key: f.id, label: prettyFieldLabel(f.label), value });
+  }
+  return {
+    id: parsed.id !== undefined && parsed.id !== null ? Number(parsed.id) : Number(avaturePersonId),
+    firstName: parsed.firstName !== undefined && parsed.firstName !== null ? String(parsed.firstName) : null,
+    lastName: parsed.lastName !== undefined && parsed.lastName !== null ? String(parsed.lastName) : null,
+    count: lines.length,
+    lines,
+  };
+}
+
 function compoundNextCursor(parsed) {
   const pagination = parsed && parsed.pagination;
   return pagination && pagination.next && pagination.next.cursor ? pagination.next.cursor : null;
@@ -508,5 +587,6 @@ module.exports = {
   getAvatureRecordNames,
   getJobCandidates,
   getPersonTable,
+  getPersonSummary,
   moveApplicationToStep,
 };
