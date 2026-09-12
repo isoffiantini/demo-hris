@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const { readData, writeData, nextId } = require("./store");
 const flowRouter = require("./integrations/flow");
+const { deleteAvatureRecord, RECORD_TYPE_JOB } = require("./integrations/hrisSync");
 const { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_VALUES, EMPLOYMENT_STATUS_LABELS } = require("./config");
 
 const app = express();
@@ -710,10 +711,26 @@ app.patch("/jobs/:id", (req, res) => {
   res.json(serializeJob(updated));
 });
 
-app.delete("/jobs/:id", (req, res) => {
+app.delete("/jobs/:id", async (req, res) => {
   const { data, entity } = getEntity("jobs", req.params.id);
   if (!entity) {
     return res.status(404).json({ error: "Job not found" });
+  }
+  if (data.employees.some((e) => e.jobId === entity.id)) {
+    return res
+      .status(400)
+      .json({ errors: ["Job is assigned to one or more employees and cannot be deleted"] });
+  }
+  if (entity.avatureId) {
+    try {
+      const result = await deleteAvatureRecord(RECORD_TYPE_JOB, entity.avatureId);
+      console.log(
+        `[jobs] delete avature record_${RECORD_TYPE_JOB}/${entity.avatureId} -> ${result.status}${result.alreadyDeleted ? " (already gone)" : ""}`
+      );
+    } catch (err) {
+      console.error(`[jobs] delete avature record ${entity.avatureId} failed: ${err.message}`);
+      return res.status(502).json({ errors: [`Failed to delete job in Avature: ${err.message}`] });
+    }
   }
   data.jobs = data.jobs.filter((item) => item.id !== entity.id);
   writeData(data);

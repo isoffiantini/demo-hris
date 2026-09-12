@@ -6,6 +6,10 @@ const AVATURE_REST_API_KEY = process.env.AVATURE_REST_API_KEY || "";
 
 const HRIS_SYNC_FORM_ID = Number(process.env.HRIS_SYNC_FORM_ID || 838);
 
+// Avature record type (entity extension) ids, configurable per environment.
+const RECORD_TYPE_JOB = Number(process.env.AVATURE_RECORD_TYPE_JOB || 7);
+const RECORD_TYPE_DEPARTMENT = Number(process.env.AVATURE_RECORD_TYPE_DEPARTMENT || 9);
+
 function apiKeyHeaders() {
   return {
     "X-Avature-REST-API-Key": AVATURE_REST_API_KEY,
@@ -253,6 +257,26 @@ function compoundApplicationUrl(applicationId) {
   return `${AVATURE_REST_BASE_URL}/rest/hrisSync/compoundRecords_8/${applicationId}`;
 }
 
+function coreRecordDeleteUrl(recordTypeId, id) {
+  return `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/data/records_${recordTypeId}/${id}`;
+}
+
+async function deleteAvatureRecord(recordTypeId, id) {
+  if (!AVATURE_REST_API_KEY) {
+    console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; skipping record delete.");
+    throw new Error("AVATURE_REST_API_KEY is not set");
+  }
+  const url = coreRecordDeleteUrl(recordTypeId, id);
+  const { res, text } = await requestJson(url, { method: "DELETE", headers: apiKeyHeaders() });
+  if (res.status === 404) {
+    return { status: 404, alreadyDeleted: true };
+  }
+  if (!res.ok) {
+    throw new Error(`avature record DELETE failed: ${res.status} ${text.slice(0, 300)}`);
+  }
+  return { status: res.status, alreadyDeleted: false };
+}
+
 async function moveApplicationToStep(applicationId, stepId) {
   if (!AVATURE_REST_API_KEY) {
     console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; skipping workflow step update.");
@@ -284,9 +308,12 @@ module.exports = {
   AVATURE_REST_BASE_URL,
   AVATURE_REST_API_KEY,
   HRIS_SYNC_FORM_ID,
+  RECORD_TYPE_JOB,
+  RECORD_TYPE_DEPARTMENT,
   attachForm,
   patchFormAt,
   coreFormBaseUrl,
+  deleteAvatureRecord,
   getEmployeeSyncForm,
   getAvatureRecordNames,
   moveApplicationToStep,

@@ -731,6 +731,42 @@
       "status": "closed",
       "employmentType": "On-site",
       "locationId": 1
+    },
+    {
+      "id": 21,
+      "name": "Senior Go Developer",
+      "description": "Own high-throughput backend services written in Go, design APIs for scale, and mentor engineers across the platform team.",
+      "departmentId": 4,
+      "status": "open",
+      "employmentType": "Remote",
+      "locationId": 3
+    },
+    {
+      "id": 22,
+      "name": "Machine Learning Engineer",
+      "description": "Build and productionize ML models, own feature pipelines and model serving, and collaborate with data scientists on product-facing intelligence.",
+      "departmentId": 1,
+      "status": "open",
+      "employmentType": "Remote",
+      "locationId": 3
+    },
+    {
+      "id": 23,
+      "name": "Site Reliability Engineer",
+      "description": "Drive reliability, observability and incident response across the platform, balancing fast delivery with robust, measurable availability.",
+      "departmentId": 4,
+      "status": "open",
+      "employmentType": "On-site",
+      "locationId": 1
+    },
+    {
+      "id": 24,
+      "name": "Talent Partner",
+      "description": "Own the full recruiting lifecycle for key roles, build sourcing strategies, and partner closely with hiring managers to close great talent.",
+      "departmentId": 7,
+      "status": "open",
+      "employmentType": "On-site",
+      "locationId": 2
     }
   ],
   "departments": [
