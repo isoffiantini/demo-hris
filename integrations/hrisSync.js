@@ -7,6 +7,7 @@ const AVATURE_REST_API_KEY = process.env.AVATURE_REST_API_KEY || "";
 const HRIS_SYNC_FORM_ID = Number(process.env.HRIS_SYNC_FORM_ID || 838);
 
 // Avature record type (entity extension) ids, configurable per environment.
+const RECORD_TYPE_EMPLOYEE = Number(process.env.AVATURE_RECORD_TYPE_EMPLOYEE || 2);
 const RECORD_TYPE_JOB = Number(process.env.AVATURE_RECORD_TYPE_JOB || 7);
 const RECORD_TYPE_DEPARTMENT = Number(process.env.AVATURE_RECORD_TYPE_DEPARTMENT || 9);
 
@@ -277,6 +278,79 @@ async function deleteAvatureRecord(recordTypeId, id) {
   return { status: res.status, alreadyDeleted: false };
 }
 
+function compoundRecordsIndexUrl(recordTypeId) {
+  return `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/data/compoundRecords_${recordTypeId}`;
+}
+
+function compoundResults(parsed) {
+  if (parsed && Array.isArray(parsed.results)) return parsed.results;
+  if (Array.isArray(parsed)) return parsed;
+  return [];
+}
+
+function compoundNextCursor(parsed) {
+  const pagination = parsed && parsed.pagination;
+  return pagination && pagination.next && pagination.next.cursor ? pagination.next.cursor : null;
+}
+
+function isPersonRelatedRecord(related) {
+  const url = String((related && related.url) || "");
+  return url.includes(`records_${RECORD_TYPE_EMPLOYEE}/`) || url.includes(`records_2/`);
+}
+
+async function getJobCandidates(avatureJobId, { maxPages = 20 } = {}) {
+  if (!AVATURE_REST_API_KEY) {
+    console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; cannot fetch candidates.");
+    throw new Error("AVATURE_REST_API_KEY is not set");
+  }
+  const compoundTypeId = RECORD_TYPE_JOB + 1;
+  const records = [];
+  let cursor = null;
+  for (let page = 0; page < maxPages; page += 1) {
+    let url = `${compoundRecordsIndexUrl(compoundTypeId)}?object_id=${avatureJobId}&use_canonical_names=1`;
+    if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
+    const { res, text } = await requestJson(url, { headers: apiKeyHeaders() });
+    if (!res.ok) {
+      throw new Error(`avature compoundRecords GET failed: ${res.status} ${text.slice(0, 300)}`);
+    }
+    const parsed = parseJson(text);
+    records.push(...compoundResults(parsed));
+    cursor = compoundNextCursor(parsed);
+    if (!cursor) break;
+  }
+
+  const candidates = [];
+  const seen = new Set();
+  for (const cr of records) {
+    const r1 = cr && cr.relatedRecord1;
+    const r2 = cr && cr.relatedRecord2;
+    if (!r1 || !r2) continue;
+    let person = r1;
+    let job = r2;
+    if (isPersonRelatedRecord(r2) && !isPersonRelatedRecord(r1)) {
+      person = r2;
+      job = r1;
+    }
+    const personId = person.id;
+    if (personId === undefined || personId === null || seen.has(String(personId))) continue;
+    seen.add(String(personId));
+    candidates.push({
+      compoundRecordId: cr.id !== undefined && cr.id !== null ? cr.id : null,
+      avaturePersonId: Number(personId),
+      avatureJobId: job && job.id !== undefined && job.id !== null ? Number(job.id) : null,
+      workflowStep: cr && cr.workflowStep
+        ? {
+            id: cr.workflowStep.id !== undefined && cr.workflowStep.id !== null ? cr.workflowStep.id : null,
+            display: cr.workflowStep.display !== undefined && cr.workflowStep.display !== null
+              ? String(cr.workflowStep.display)
+              : "",
+          }
+        : null,
+    });
+  }
+  return candidates;
+}
+
 async function moveApplicationToStep(applicationId, stepId) {
   if (!AVATURE_REST_API_KEY) {
     console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; skipping workflow step update.");
@@ -316,5 +390,6 @@ module.exports = {
   deleteAvatureRecord,
   getEmployeeSyncForm,
   getAvatureRecordNames,
+  getJobCandidates,
   moveApplicationToStep,
 };

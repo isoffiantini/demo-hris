@@ -559,7 +559,8 @@
       "departmentId": 4,
       "status": "open",
       "employmentType": "Remote",
-      "locationId": 3
+      "locationId": 3,
+      "avatureId": 4308
     },
     {
       "id": 2,

@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const { readData, writeData, nextId } = require("./store");
 const flowRouter = require("./integrations/flow");
-const { deleteAvatureRecord, RECORD_TYPE_JOB } = require("./integrations/hrisSync");
+const { deleteAvatureRecord, getJobCandidates, getAvatureRecordNames, RECORD_TYPE_JOB, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
 const { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_VALUES, EMPLOYMENT_STATUS_LABELS } = require("./config");
 
 const app = express();
@@ -672,6 +672,54 @@ app.get("/jobs/:id", (req, res) => {
     return res.status(404).json({ error: "Job not found" });
   }
   res.json(serializeJob(entity));
+});
+
+app.get("/jobs/:id/candidates", async (req, res) => {
+  const { entity } = getEntity("jobs", req.params.id);
+  if (!entity) {
+    return res.status(404).json({ error: "Job not found" });
+  }
+  if (!entity.avatureId) {
+    return res.status(400).json({ errors: ["Job is not synced with Avature (no Avature id)"] });
+  }
+  const maxPagesRaw = Number(req.query.maxPages);
+  const maxPages = Number.isInteger(maxPagesRaw) && maxPagesRaw > 0 ? maxPagesRaw : 20;
+  try {
+    const candidates = await getJobCandidates(entity.avatureId, { maxPages });
+    const avatureBaseUrl = String(AVATURE_REST_BASE_URL || "").replace(/\/+$/, "");
+    const enriched = [];
+    const BATCH = 5;
+    for (let i = 0; i < candidates.length; i += BATCH) {
+      const chunk = candidates.slice(i, i + BATCH);
+      const named = await Promise.all(
+        chunk.map(async (c) => {
+          try {
+            const names = await getAvatureRecordNames(c.avaturePersonId);
+            return { ...c, firstName: names.firstName, lastName: names.lastName };
+          } catch (err) {
+            console.error(`[candidates] person ${c.avaturePersonId} name lookup failed: ${err.message}`);
+            return { ...c, firstName: null, lastName: null };
+          }
+        })
+      );
+      enriched.push(...named);
+    }
+    const result = enriched.map((c) => ({
+      ...c,
+      avatureUrl: c.avaturePersonId !== undefined && c.avaturePersonId !== null
+        ? `${avatureBaseUrl}/#Person/${c.avaturePersonId}`
+        : null,
+    }));
+    res.json({
+      jobId: entity.id,
+      avatureJobId: entity.avatureId,
+      count: result.length,
+      candidates: result,
+    });
+  } catch (err) {
+    console.error(`[candidates] job ${entity.id} failed: ${err.message}`);
+    res.status(502).json({ errors: [err.message] });
+  }
 });
 
 app.post("/jobs", (req, res) => {

@@ -1108,10 +1108,17 @@
     }
 
     // ---------- job bot ----------
+    let jobBotContext = null;
+
     function initJobBot(job) {
       const host = document.getElementById("job-bot");
       if (!host) return;
       if (!job || !job.avatureId) return;
+      jobBotContext = { id: job.id, status: job.status };
+      const canCandidates = job.status === "open";
+      const greeting = canCandidates
+        ? "Hi! This job is synced with Avature. I can <b>delete</b> it from Avature or show the <b>candidates</b> that applied to it."
+        : "Hi! This job is synced with Avature. Type <b>delete</b> to delete it.";
       host.innerHTML = `
         <button class="job-bot-toggle" onclick="toggleJobBot()" title="Job assistant (Avature)" aria-label="Open job assistant">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="2"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><path d="M12 7V4"/><circle cx="12" cy="3" r="1.2"/><path d="M4 12H2M22 12h-2"/></svg>
@@ -1122,7 +1129,7 @@
             <button class="job-bot-close" onclick="toggleJobBot(false)" aria-label="Close">×</button>
           </div>
           <div class="job-bot-msgs" id="job-bot-msgs">
-            <div class="job-bot-msg bot">Hi! I can delete this job from Avature. Type <b>delete</b> to start.</div>
+            <div class="job-bot-msg bot">${greeting}</div>
           </div>
           <div class="job-bot-input-row">
             <input id="job-bot-input" placeholder="Type a message..." autocomplete="off" onkeydown="jobBotKey(event, ${job.id})" />
@@ -1168,8 +1175,44 @@
         jobBotMsg('I will delete this job from Avature. Type <b>yes</b> to confirm.');
       } else if (/^(yes|si|confirm|confirmar|ok)$/.test(lower)) {
         botDeleteJob(id);
+      } else if (/(candidates|candidatos)/.test(lower)) {
+        botShowCandidates(id);
       } else {
-        jobBotMsg('I can delete this job from Avature. Type <b>delete</b> to start.');
+        const canCandidates = jobBotContext && jobBotContext.status === "open";
+        jobBotMsg(canCandidates
+          ? 'I can <b>delete</b> this job from Avature or show the <b>candidates</b> that applied to it.'
+          : 'I can delete this job from Avature. Type <b>delete</b> to start.');
+      }
+    }
+
+    async function botShowCandidates(id) {
+      jobBotMsg("Loading candidates from Avature...");
+      try {
+        const { res, data } = await api(`/jobs/${id}/candidates`);
+        if (!res.ok) {
+          jobBotMsg(`Error: ${esc(extractErrors(data))}`);
+          return;
+        }
+        const list = data && Array.isArray(data.candidates) ? data.candidates : [];
+        if (!list.length) {
+          jobBotMsg("No candidates found for this job in Avature.");
+          return;
+        }
+        const items = list.map((c, i) => {
+          const name = c.firstName && c.lastName
+            ? `${esc(c.firstName)} ${esc(c.lastName)}`
+            : esc(String(c.avaturePersonId || c.compoundRecordId || "?"));
+          const step = c.workflowStep && c.workflowStep.display
+            ? ` <i>(${esc(String(c.workflowStep.display))})</i>`
+            : "";
+          const link = c.avatureUrl
+            ? ` <a href="${esc(c.avatureUrl)}" target="_blank" rel="noopener noreferrer">view</a>`
+            : "";
+          return `${i + 1}. ${name}${step}${link}`;
+        });
+        jobBotMsg(`${list.length} candidate(s) applied to this job:<br>${items.join("<br>")}`);
+      } catch (err) {
+        jobBotMsg(`Error: ${esc(err.message)}`);
       }
     }
 
