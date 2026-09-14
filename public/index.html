@@ -1117,6 +1117,7 @@
     }
 
     // ---------- job bot ----------
+    let jobBotEnabled = false;
     let jobBotContext = null;
     const botState = { candidates: [], selected: null };
 
@@ -1126,6 +1127,7 @@
     }
 
     function initJobBot(job) {
+      if (!jobBotEnabled) return;
       const host = document.getElementById("job-bot");
       if (!host) return;
       if (!job || !job.avatureId) return;
@@ -1468,8 +1470,16 @@
 
     async function loadData() {
       const configRes = await api("/config");
-      if (configRes.res.ok && configRes.data && Array.isArray(configRes.data.employmentStatuses)) {
-        CONFIG.employmentStatuses = configRes.data.employmentStatuses;
+      if (configRes.res.ok) {
+        const cfg = configRes.data || {};
+        if (Array.isArray(cfg.employmentStatuses)) {
+          CONFIG.employmentStatuses = cfg.employmentStatuses;
+        }
+        jobBotEnabled = cfg.jobBotEnabled === true;
+        if (!jobBotEnabled) {
+          const botHost = document.getElementById("job-bot");
+          if (botHost) botHost.style.display = "none";
+        }
       }
       const [jobRes, locRes] = await Promise.all([
         api("/jobs?pageSize=100"),

@@ -8,6 +8,8 @@ const { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_VALUES, EMPLOYMENT_STATUS_LABELS 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const JOB_BOT_ENABLED = String(process.env.JOB_BOT_ENABLED || "").toLowerCase() === "true";
+
 console.log(`[hris] starting - PORT=${PORT} JUNCTION_EVENTS_URL=${process.env.JUNCTION_EVENTS_URL || "https://junctiontraining.avature.net/junction/events/v2/-MSw1QmrDUfibjnwiEOdXY6xo2ODDQqMOtc7WcXW/ (default)"}`);
 
 app.use(
@@ -294,6 +296,7 @@ app.use(flowRouter);
 app.get("/config", (req, res) => {
   res.json({
     employmentStatuses: EMPLOYMENT_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+    jobBotEnabled: JOB_BOT_ENABLED,
   });
 });
 
