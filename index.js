@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const { readData, writeData, nextId } = require("./store");
 const flowRouter = require("./integrations/flow");
-const { deleteAvatureRecord, getJobCandidates, getAvatureRecordNames, getPersonTable, getPersonSummary, RECORD_TYPE_JOB, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
+const { deleteAvatureRecord, updateAvatureRecordName, getJobCandidates, getAvatureRecordNames, getPersonTable, getPersonSummary, RECORD_TYPE_JOB, RECORD_TYPE_DEPARTMENT, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
 const { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_VALUES, EMPLOYMENT_STATUS_LABELS } = require("./config");
 
 const app = express();
@@ -926,13 +926,21 @@ app.post("/departments", (req, res) => {
   res.status(201).json(department);
 });
 
-app.patch("/departments/:id", (req, res) => {
+app.patch("/departments/:id", async (req, res) => {
   if (handleErrors(validateDepartment(req.body, true), res)) return;
   const { data, entity } = getEntity("departments", req.params.id);
   if (!entity) {
     return res.status(404).json({ error: "Department not found" });
   }
   const updated = applyPartial(entity, req.body);
+  if (updated.name !== entity.name && entity.avatureId) {
+    try {
+      await updateAvatureRecordName(RECORD_TYPE_DEPARTMENT, entity.avatureId, updated.name);
+    } catch (err) {
+      console.error(`[departments] Avature update failed for department ${entity.id}: ${err.message}`);
+      return res.status(502).json({ errors: [`Failed to update department in Avature: ${err.message}`] });
+    }
+  }
   data.departments = data.departments.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);
   res.json(updated);

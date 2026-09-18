@@ -278,6 +278,23 @@ async function deleteAvatureRecord(recordTypeId, id) {
   return { status: res.status, alreadyDeleted: false };
 }
 
+async function updateAvatureRecordName(recordTypeId, id, name) {
+  if (!AVATURE_REST_API_KEY) {
+    console.warn("[hrisSync] AVATURE_REST_API_KEY is not set; skipping record update.");
+    throw new Error("AVATURE_REST_API_KEY is not set");
+  }
+  const url = coreRecordDeleteUrl(recordTypeId, id);
+  const { res, text } = await requestJson(url, {
+    method: "PATCH",
+    headers: apiKeyHeaders(),
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    throw new Error(`avature record PATCH failed: ${res.status} ${text.slice(0, 300)}`);
+  }
+  return { status: res.status };
+}
+
 function compoundRecordsIndexUrl(recordTypeId) {
   return `${AVATURE_REST_BASE_URL}/rest/avature/core/v1/data/compoundRecords_${recordTypeId}`;
 }
@@ -600,6 +617,7 @@ module.exports = {
   patchFormAt,
   coreFormBaseUrl,
   deleteAvatureRecord,
+  updateAvatureRecordName,
   getEmployeeSyncForm,
   getAvatureRecordNames,
   getJobCandidates,

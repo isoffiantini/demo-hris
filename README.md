@@ -106,6 +106,8 @@ Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use 
 
 **Callback `sync-departments`:** funciona igual que `sync-jobs`, pero actualiza los departamentos importados. Por cada registro con `id` (id del departamento en Avature) y `schemaField_841_2_35908` (id del departamento en el HRIS), agrega `avatureId` al departamento interno. El campo de enlace se puede cambiar con `DEPARTMENT_HRIS_ID_FIELD` si el schema de Avature usa otro nombre.
 
+Al modificar el nombre de un departamento con `PATCH /departments/:id`, si el departamento tiene `avatureId`, el servidor también ejecuta `PATCH https://junctiontraining.avature.net/rest/avature/core/v1/data/records_9/{avatureId}` enviando únicamente `{ "name": "..." }`. Si Avature rechaza la actualización, el HRIS responde `502` y no persiste el cambio local.
+
 **Notificación de ex-empleado:** al editar un empleado y cambiarlo **a** `Ex Employee` (única vez, es decir pasando desde otro estado) y que el empleado tenga id de Avature (`avaturePersonId`), la UI hace `POST /notify-rehire` (proxy del servidor) que envía `POST` al endpoint JUNCTION configurado en `JUNCTION_REHIRE_URL` (por defecto `https://junctiontraining.avature.net/junction/endpoint/-AN1TFDhSzXj-OpK_uch0Pf4q27KZ3lddmpWHCTo/`) con el payload JSON:
 
 ```json
