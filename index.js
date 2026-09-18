@@ -165,6 +165,9 @@ const CALLBACK_OPERATIONS = new Set(["sync-locations", "sync-departments", "sync
 
 // Field in the jobs callback payload that carries the HRIS job id, and the record `id` carries the Avature job id.
 const JOB_HRIS_ID_FIELD = "schemaField_837_5_35914";
+// Field in the departments callback payload that carries the HRIS department id.
+// Override with DEPARTMENT_HRIS_ID_FIELD if the Avature department schema uses another field.
+const DEPARTMENT_HRIS_ID_FIELD = process.env.DEPARTMENT_HRIS_ID_FIELD || "schemaField_841_2_35908";
 
 function normalizeKey(key) {
   return String(key).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -243,6 +246,37 @@ function applyJobAvatureIds(body) {
   return { updated, errors };
 }
 
+function applyDepartmentAvatureIds(body) {
+  const records = [];
+  collectRecordsWithField(body, DEPARTMENT_HRIS_ID_FIELD, records);
+  const data = readData();
+  let updated = 0;
+  const errors = [];
+  for (const record of records) {
+    const hrisDepartmentId = Number(fieldValue(record[DEPARTMENT_HRIS_ID_FIELD]));
+    const avatureId = Number(fieldValue(record.id));
+    if (!Number.isFinite(hrisDepartmentId) || hrisDepartmentId <= 0) {
+      errors.push(`record ${JSON.stringify(record.id)} has invalid ${DEPARTMENT_HRIS_ID_FIELD}`);
+      continue;
+    }
+    if (!Number.isFinite(avatureId) || avatureId <= 0) {
+      errors.push(`departmentId=${hrisDepartmentId} has no Avature id`);
+      continue;
+    }
+    const department = data.departments.find((d) => d.id === hrisDepartmentId);
+    if (!department) {
+      errors.push(`departmentId=${hrisDepartmentId} not found in HRIS`);
+      continue;
+    }
+    department.avatureId = avatureId;
+    updated += 1;
+    console.log(`[callback] sync-departments map departmentId=${hrisDepartmentId} <- avatureId=${avatureId}`);
+  }
+  if (updated) writeData(data);
+  console.log(`[callback] sync-departments recordsWithHrisIdField=${records.length} updated=${updated} errors=${errors.length}`);
+  return { updated, errors };
+}
+
 app.all("/callback/:operation", async (req, res) => {
   const operation = req.params.operation;
   if (!CALLBACK_OPERATIONS.has(operation)) {
@@ -284,6 +318,34 @@ app.all("/callback/:operation", async (req, res) => {
         console.log(`[callback] sync-jobs updated ${result.updated} job(s) with Avature ids`);
     } catch (err) {
       console.error(`[callback] sync-jobs processing failed: ${err.message}`);
+      response.ok = false;
+      response.errors = [err.message];
+    }
+  }
+  if (operation === "sync-departments") {
+    try {
+      const ct = req.headers["content-type"] || "";
+      let processBody = req.body || {};
+      if (ct.toLowerCase().startsWith("multipart/form-data") && typeof req.rawBody === "string") {
+        const fields = parseFormFields(req.rawBody);
+        if (fields.entityProperties) {
+          try {
+            processBody = JSON.parse(fields.entityProperties);
+          } catch (err) {
+            response.ok = false;
+            response.errors = [`entityProperties is not valid JSON: ${err.message}`];
+          }
+        } else {
+          processBody = {};
+        }
+      }
+      const result = applyDepartmentAvatureIds(processBody);
+      response.updated = result.updated;
+      if (result.errors.length) response.errors = result.errors;
+      if (result.updated)
+        console.log(`[callback] sync-departments updated ${result.updated} department(s) with Avature ids`);
+    } catch (err) {
+      console.error(`[callback] sync-departments processing failed: ${err.message}`);
       response.ok = false;
       response.errors = [err.message];
     }

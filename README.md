@@ -104,6 +104,8 @@ Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use 
 
 **Callback `sync-jobs`:** Avature envía el aviso del import como `multipart/form-data` (campos `result`, `processedCount`, `successfulCount`, `warningCount`, `failedCount`, `error`, `importerProcessId`, `entityProperties`). El servidor parsea `entityProperties` (JSON con los registros importados): por cada registro que tenga `id` (id del job en Avature) y `schemaField_837_5_35914` (id del job en el HRIS), se actualiza el job interno del HRIS agregándole el campo `avatureId`. La respuesta incluye `updated` y `errors` (jobs no encontrados, sin id, etc.) si los hay. También acepta un body JSON directo (array o envuelto) con los mismos campos.
 
+**Callback `sync-departments`:** funciona igual que `sync-jobs`, pero actualiza los departamentos importados. Por cada registro con `id` (id del departamento en Avature) y `schemaField_841_2_35908` (id del departamento en el HRIS), agrega `avatureId` al departamento interno. El campo de enlace se puede cambiar con `DEPARTMENT_HRIS_ID_FIELD` si el schema de Avature usa otro nombre.
+
 **Notificación de ex-empleado:** al editar un empleado y cambiarlo **a** `Ex Employee` (única vez, es decir pasando desde otro estado) y que el empleado tenga id de Avature (`avaturePersonId`), la UI hace `POST /notify-rehire` (proxy del servidor) que envía `POST` al endpoint JUNCTION configurado en `JUNCTION_REHIRE_URL` (por defecto `https://junctiontraining.avature.net/junction/endpoint/-AN1TFDhSzXj-OpK_uch0Pf4q27KZ3lddmpWHCTo/`) con el payload JSON:
 
 ```json
@@ -214,4 +216,3 @@ En cada `POST`, para cada evento se procesa su `record.id` (el id de Avature):
 4. Si difieren de los del empleado en el HRIS, se actualizan sus `firstName`/`lastName` y además se PATCHea el form de sincronización `PATCH {base}/rest/hrisSync/people/{id}/form_{FORM_ID}/{formId}` (la misma REST API usada al crear un empleado) actualizando `Last Synced`. Si coinciden se registra `match` y no se modifica nada.
 
 El parseo es tolerante a formas de respuesta (`items`/`data`/array) y claves case-insensitive (`first_name`, `firstName`, `First Name`; `hris_external_id`, `hrisExternalId`, `HRIS External ID`). Usa las mismas variables de entorno (`AVATURE_REST_API_KEY`, `AVATURE_REST_BASE_URL`).
-

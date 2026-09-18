@@ -554,9 +554,9 @@
     function departmentTable(list) {
       if (!list.length) return '<div class="empty">No departments yet.</div>';
       return `<table>
-        <thead><tr><th>Name</th><th>Description</th></tr></thead>
+        <thead><tr><th>Name</th><th>Description</th><th>Avature ID</th></tr></thead>
         <tbody>
-          ${list.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.description)}</td></tr>`).join("")}
+          ${list.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.description)}</td><td>${d.avatureId == null || d.avatureId === "" ? "—" : esc(d.avatureId)}</td></tr>`).join("")}
         </tbody>
       </table>`;
     }
