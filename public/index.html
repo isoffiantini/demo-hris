@@ -554,9 +554,9 @@
     function departmentTable(list) {
       if (!list.length) return '<div class="empty">No departments yet.</div>';
       return `<table>
-        <thead><tr><th>Name</th><th>Description</th><th>Avature ID</th></tr></thead>
+        <thead><tr><th>Name</th><th>Description</th><th>Avature ID</th><th>Actions</th></tr></thead>
         <tbody>
-          ${list.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.description)}</td><td>${d.avatureId == null || d.avatureId === "" ? "—" : esc(d.avatureId)}</td></tr>`).join("")}
+          ${list.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.description)}</td><td>${d.avatureId == null || d.avatureId === "" ? "—" : esc(d.avatureId)}</td><td><a class="btn primary" href="#/departments/${d.id}/edit">Edit</a></td></tr>`).join("")}
         </tbody>
       </table>`;
     }
@@ -676,6 +676,7 @@
       { pattern: /^#\/jobs\/(\d+)\/edit$/, view: (m) => jobFormView(m[1]) },
       { pattern: /^#\/jobs\/(\d+)$/, view: (m) => jobDetailView(m[1]) },
       { pattern: /^#\/departments$/, view: departmentsListView },
+      { pattern: /^#\/departments\/(\d+)\/edit$/, view: () => '<div class="card"><div class="msg">Loading...</div></div>' },
       { pattern: /^#\/locations$/, view: locationsListView },
     ];
 
@@ -814,6 +815,8 @@
       if (jobDetail) { type = "job"; id = jobDetail[1]; mode = "detail"; }
       const jobEdit = hash.match(/^#\/jobs\/(\d+)\/edit$/);
       if (jobEdit) { type = "job"; id = jobEdit[1]; mode = "edit"; }
+      const departmentEdit = hash.match(/^#\/departments\/(\d+)\/edit$/);
+      if (departmentEdit) { type = "department"; id = departmentEdit[1]; mode = "edit"; }
       if (!type) return;
 
       const { res, data } = await api(`/${type}s/${id}`);
@@ -893,6 +896,20 @@
             <div class="detail-row"><span class="k">Department</span><span class="v">${esc(e.department)}</span></div>
             <div class="detail-row"><span class="k">Job</span><span class="v">${jobName(e.jobId)}</span></div>
           </div>`;
+      } else if (type === "department") {
+        app.innerHTML = `
+          ${pageTitle("Edit department")}
+          <div class="card">
+            <form id="entity-form">
+              ${field("name", "Name", data)}
+              <label>Description <input name="description" value="${esc(data.description || "")}" /></label>
+              <div class="form-actions">
+                <button class="primary" type="submit">Save changes</button>
+                <a class="btn" href="#/departments" style="border:1px solid #cbd2d9">Cancel</a>
+              </div>
+            </form>
+          </div>`;
+        document.getElementById("entity-form").addEventListener("submit", submitForm);
       } else {
         const j = data;
         if (mode === "edit") {
@@ -954,7 +971,9 @@
 
     // ---------- actions ----------
     function formType() {
-      return location.hash.includes("/jobs") ? "job" : "employee";
+      if (location.hash.includes("/jobs")) return "job";
+      if (location.hash.includes("/departments")) return "department";
+      return "employee";
     }
     function formId() {
       const m = location.hash.match(/(\d+)\/edit$/);
@@ -1048,6 +1067,9 @@
         employmentType: form.employmentType.value,
         locationId: Number(form.location.value),
         avatureId: form.avatureId && form.avatureId.value.trim() ? Number(form.avatureId.value) : null,
+      } : type === "department" ? {
+        name: form.name.value.trim(),
+        description: form.description.value.trim(),
       } : {
         firstName: form.firstName.value.trim(),
         lastName: form.lastName.value.trim(),
@@ -1074,8 +1096,8 @@
         if (type === "employee" && body.employmentStatus === "Ex Employee" && prevStatus !== "Ex Employee" && hasAvatureId) {
           notifyRehire(data, data.whyExEmployee, data.rehireEligible, prevAvatureId);
         }
-        showToast(type === "job" ? "Job updated." : "Employee updated.");
-        location.hash = type === "job" ? `#/jobs/${id}` : `#/people/${id}`;
+        showToast(type === "job" ? "Job updated." : type === "department" ? "Department updated." : "Employee updated.");
+        location.hash = type === "job" ? `#/jobs/${id}` : type === "department" ? "#/departments" : `#/people/${id}`;
       } else {
         showToast(type === "job" ? "Job created successfully." : "Employee created successfully.");
         location.hash = type === "job" ? "#/jobs" : "#/people";
