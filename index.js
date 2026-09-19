@@ -2,7 +2,10 @@ const express = require("express");
 const path = require("path");
 const { readData, writeData, nextId } = require("./store");
 const flowRouter = require("./integrations/flow");
-const { deleteAvatureRecord, updateAvatureRecordName, getJobCandidates, getAvatureRecordNames, getPersonTable, getPersonSummary, RECORD_TYPE_JOB, RECORD_TYPE_DEPARTMENT, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
+const employeeWebhookRouter = require("./integrations/employeeWebhook");
+const { deleteAvatureRecord, getJobCandidates, getAvatureRecordNames, getPersonTable, getPersonSummary, RECORD_TYPE_JOB, AVATURE_REST_BASE_URL } = require("./integrations/hrisSync");
+const { syncDepartmentUpdate } = require("./integrations/departmentSync");
+const { syncJobUpdate } = require("./integrations/jobSync");
 const { EMPLOYMENT_STATUSES, EMPLOYMENT_STATUS_VALUES, EMPLOYMENT_STATUS_LABELS } = require("./config");
 
 const app = express();
@@ -354,6 +357,7 @@ app.all("/callback/:operation", async (req, res) => {
 });
 
 app.use(flowRouter);
+app.use(employeeWebhookRouter);
 
 app.get("/config", (req, res) => {
   res.json({
@@ -838,7 +842,7 @@ app.post("/jobs", (req, res) => {
   res.status(201).json(serializeJob(job));
 });
 
-app.patch("/jobs/:id", (req, res) => {
+app.patch("/jobs/:id", async (req, res) => {
   if (handleErrors(validateJob(req.body, true), res)) return;
   const { data, entity } = getEntity("jobs", req.params.id);
   if (!entity) {
@@ -853,6 +857,12 @@ app.patch("/jobs/:id", (req, res) => {
     return res.status(400).json({ errors: ["locationId references a location that does not exist"] });
   }
   const updated = applyPartial(entity, normalizeJobInput(req.body));
+  try {
+    await syncJobUpdate(entity, updated);
+  } catch (err) {
+    console.error(`[jobs] Avature update failed for job ${entity.id}: ${err.message}`);
+    return res.status(502).json({ errors: [`Failed to update job in Avature: ${err.message}`] });
+  }
   data.jobs = data.jobs.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);
   res.json(serializeJob(updated));
@@ -933,13 +943,11 @@ app.patch("/departments/:id", async (req, res) => {
     return res.status(404).json({ error: "Department not found" });
   }
   const updated = applyPartial(entity, req.body);
-  if (updated.name !== entity.name && entity.avatureId) {
-    try {
-      await updateAvatureRecordName(RECORD_TYPE_DEPARTMENT, entity.avatureId, updated.name);
-    } catch (err) {
-      console.error(`[departments] Avature update failed for department ${entity.id}: ${err.message}`);
-      return res.status(502).json({ errors: [`Failed to update department in Avature: ${err.message}`] });
-    }
+  try {
+    await syncDepartmentUpdate(entity, updated);
+  } catch (err) {
+    console.error(`[departments] Avature update failed for department ${entity.id}: ${err.message}`);
+    return res.status(502).json({ errors: [`Failed to update department in Avature: ${err.message}`] });
   }
   data.departments = data.departments.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);

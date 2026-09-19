@@ -108,6 +108,10 @@ Los endpoints `/callback/:operation` aceptan `GET` o `POST` (el que Avature use 
 
 Al modificar el nombre de un departamento con `PATCH /departments/:id`, si el departamento tiene `avatureId`, el servidor también ejecuta `PATCH https://junctiontraining.avature.net/rest/avature/core/v1/data/records_9/{avatureId}` enviando únicamente `{ "name": "..." }`. Si Avature rechaza la actualización, el HRIS responde `502` y no persiste el cambio local.
 
+La sincronización de cambios está separada en `integrations/departmentSync.js` y `integrations/jobSync.js`, con el cliente común en `integrations/avatureRecord.js`. Al renombrar un job con `avatureId`, se actualiza únicamente `name` en `records_7/{avatureId}`. Los campos locales como descripción, ubicación y tipo de empleo no se envían porque no tienen un mapeo definido en `RecordSchemaUpdate` del OpenAPI.
+
+El flow de creación de empleados está implementado en `integrations/employeeCreation.js`; `integrations/flow.js` conserva únicamente el punto de entrada compatible hacia ese módulo.
+
 **Notificación de ex-empleado:** al editar un empleado y cambiarlo **a** `Ex Employee` (única vez, es decir pasando desde otro estado) y que el empleado tenga id de Avature (`avaturePersonId`), la UI hace `POST /notify-rehire` (proxy del servidor) que envía `POST` al endpoint JUNCTION configurado en `JUNCTION_REHIRE_URL` (por defecto `https://junctiontraining.avature.net/junction/endpoint/-AN1TFDhSzXj-OpK_uch0Pf4q27KZ3lddmpWHCTo/`) con el payload JSON:
 
 ```json
