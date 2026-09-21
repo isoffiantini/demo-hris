@@ -143,7 +143,7 @@ function formBody(personId, fields) {
     "HRIS URL": fields.hrisUrl || null,
     "Sync Details": String(fields.syncDetails ?? "Success"),
     "Last Synced": String(fields.lastSynced ?? ""),
-    "Is Hired?": "Yes",
+    "Is Hired?": fields.isHired === undefined ? "Yes" : String(fields.isHired),
   };
 }
 

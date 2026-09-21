@@ -106,7 +106,7 @@ router.post("/flow_create_employee", async (req, res) => {
       if (errorPersonId !== null && errorPersonId !== "") {
         void (async () => {
           try {
-            await attachForm(errorPersonId, { hrisExternalId: "", hrisUrl: null, syncDetails: `Validation failed: ${validationErrors.join(", ")}`, lastSynced: utcDateTime() });
+            await attachForm(errorPersonId, { hrisExternalId: "", hrisUrl: null, syncDetails: `Validation failed: ${validationErrors.join(", ")}`, lastSynced: utcDateTime(), isHired: "No" });
           } catch (err) {
             console.error(`[hrisSync] Failed to attach form on validation error: ${err.message}`);
           }
