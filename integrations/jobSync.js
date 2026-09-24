@@ -1,9 +1,13 @@
 const { RECORD_TYPE_JOB } = require("./hrisSync");
-const { updateRecordName } = require("./avatureRecord");
+const { updateRecord } = require("./avatureRecord");
 
 async function syncJobUpdate(previous, updated) {
-  if (!previous.avatureId || previous.name === updated.name) return null;
-  return updateRecordName(RECORD_TYPE_JOB, previous.avatureId, updated.name);
+  if (!previous.avatureId) return null;
+  const fields = {};
+  if (previous.name !== updated.name) fields.name = updated.name;
+  if (previous.status !== updated.status) fields.isOpened = updated.status === "open";
+  if (Object.keys(fields).length === 0) return null;
+  return updateRecord(RECORD_TYPE_JOB, previous.avatureId, fields);
 }
 
 module.exports = { syncJobUpdate };

@@ -1,6 +1,10 @@
 const { AVATURE_REST_BASE_URL, AVATURE_REST_API_KEY } = require("./hrisSync");
 
 async function updateRecordName(recordTypeId, avatureId, name) {
+  return updateRecord(recordTypeId, avatureId, { name });
+}
+
+async function updateRecord(recordTypeId, avatureId, fields) {
   if (!AVATURE_REST_API_KEY) {
     throw new Error("AVATURE_REST_API_KEY is not set");
   }
@@ -12,7 +16,7 @@ async function updateRecordName(recordTypeId, avatureId, name) {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(fields),
   });
   const text = await res.text().catch(() => "");
   console.log(`[avatureRecord] PATCH ${url} -> ${res.status} (${text.length} bytes)`);
@@ -22,4 +26,4 @@ async function updateRecordName(recordTypeId, avatureId, name) {
   return { status: res.status };
 }
 
-module.exports = { updateRecordName };
+module.exports = { updateRecord, updateRecordName };
