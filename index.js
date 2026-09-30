@@ -493,7 +493,20 @@ function validateDepartment(body, partial) {
 
 function validateLocation(body, partial) {
   const errors = checkRequiredAndEmpty(["country", "state"], body, partial);
+  if (body.avatureId !== undefined && body.avatureId !== null && body.avatureId !== "") {
+    const av = Number(body.avatureId);
+    if (!Number.isInteger(av) || av <= 0) {
+      errors.push("avatureId must be a positive integer");
+    }
+  }
   return errors;
+}
+
+function normalizeLocationInput(body) {
+  if (!("avatureId" in body)) return body;
+  const value = body.avatureId;
+  if (value === undefined || value === null || value === "") return { ...body, avatureId: null };
+  return { ...body, avatureId: Number(value) };
 }
 
 function handleErrors(errors, res) {
@@ -985,7 +998,7 @@ app.get("/locations/:id", (req, res) => {
 app.post("/locations", (req, res) => {
   if (handleErrors(validateLocation(req.body, false), res)) return;
   const data = readData();
-  const location = { id: nextId(data.locations), ...req.body };
+  const location = { id: nextId(data.locations), ...normalizeLocationInput(req.body) };
   data.locations.push(location);
   writeData(data);
   res.status(201).json(location);
@@ -997,7 +1010,7 @@ app.patch("/locations/:id", (req, res) => {
   if (!entity) {
     return res.status(404).json({ error: "Location not found" });
   }
-  const updated = applyPartial(entity, req.body);
+  const updated = applyPartial(entity, normalizeLocationInput(req.body));
   data.locations = data.locations.map((item) => (item.id === updated.id ? updated : item));
   writeData(data);
   res.json(updated);

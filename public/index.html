@@ -507,6 +507,7 @@
             <form onsubmit="createLocation(event)" class="inline-form">
               <input id="loc-country" placeholder="Country" required />
               <input id="loc-state" placeholder="State" required />
+              <input id="loc-avature-id" type="number" min="1" placeholder="Avature ID (optional)" />
               <button class="primary" type="submit">Add location</button>
             </form>
           </div>
@@ -564,9 +565,9 @@
     function locationTable(list) {
       if (!list.length) return '<div class="empty">No locations yet.</div>';
       return `<table>
-        <thead><tr><th>Country</th><th>State</th></tr></thead>
+        <thead><tr><th>Country</th><th>State</th><th>Avature ID</th></tr></thead>
         <tbody>
-          ${list.map((l) => `<tr><td>${esc(l.country)}</td><td>${esc(l.state)}</td></tr>`).join("")}
+          ${list.map((l) => `<tr><td>${esc(l.country)}</td><td>${esc(l.state)}</td><td>${l.avatureId == null || l.avatureId === "" ? "—" : esc(l.avatureId)}</td></tr>`).join("")}
         </tbody>
       </table>`;
     }
@@ -1451,7 +1452,9 @@
       e.preventDefault();
       const country = document.getElementById("loc-country").value.trim();
       const state = document.getElementById("loc-state").value.trim();
-      const { res, data } = await api("/locations", "POST", { country, state });
+      const avatureIdValue = document.getElementById("loc-avature-id").value.trim();
+      const avatureId = avatureIdValue ? Number(avatureIdValue) : null;
+      const { res, data } = await api("/locations", "POST", { country, state, avatureId });
       if (!res.ok) { showToast(extractErrors(data), "error"); return; }
       await loadData();
       showToast("Location created.");
